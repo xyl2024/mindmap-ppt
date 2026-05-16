@@ -122,9 +122,9 @@ function handleKeydown(event) {
   }
 
   const stepByKey = {
-    ArrowDown: 1,
+    ArrowRight: 1,
     PageDown: 1,
-    ArrowUp: -1,
+    ArrowLeft: -1,
     PageUp: -1,
   };
   const step = stepByKey[event.key];
