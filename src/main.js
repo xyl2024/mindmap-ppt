@@ -157,18 +157,20 @@ function handleWheel(event) {
 
   event.preventDefault();
 
+  // Detect direction change and reset buffer
   if (wheelDeltaBuffer !== 0 && Math.sign(wheelDeltaBuffer) !== Math.sign(deltaY)) {
     wheelDeltaBuffer = 0;
   }
+
   wheelDeltaBuffer += deltaY;
-  const step = Math.trunc(wheelDeltaBuffer / wheelNavigation.threshold);
-  if (step === 0) {
-    scheduleWheelBufferReset();
-    return;
+
+  // Only move one step per wheel event, regardless of accumulated delta
+  if (Math.abs(wheelDeltaBuffer) >= wheelNavigation.threshold) {
+    const direction = wheelDeltaBuffer > 0 ? 1 : -1;
+    setActiveIndex(activeIndex + direction);
+    wheelDeltaBuffer = 0;
   }
 
-  setActiveIndex(activeIndex + step);
-  wheelDeltaBuffer -= step * wheelNavigation.threshold;
   scheduleWheelBufferReset();
 }
 
