@@ -1,4 +1,8 @@
-import { sourceMarkdown } from "../project/source.js";
+const sourceMarkdown = window.sourceMarkdown;
+
+if (typeof sourceMarkdown !== "string") {
+  throw new Error("Mindmap source data was not loaded. Make sure project/source.js is included before src/main.js.");
+}
 
 const mindmap = document.querySelector("#mindmap");
 const mapLayer = document.querySelector("#mapLayer");

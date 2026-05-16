@@ -17,7 +17,7 @@ Core files:
 Use this shape:
 
 ```js
-export const sourceMarkdown = `
+window.sourceMarkdown = `
 - Markdown Mindmap
   项目汇报思维导图演示
   @image overview.png

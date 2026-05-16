@@ -1,6 +1,6 @@
 ---
 name: mindmap-ppt-builder
-description: Create or update content for the agegr/mindmap-ppt static presentation project from a prose draft, article, speech, report, or notes. Use when Codex needs to turn a written document into the project's project/source.js Markdown mind-map data, choose which nodes need illustrations, generate or request GPT Image 2 illustrations matching the project's restrained presentation style, place assets under project/, and validate the result with npm run check. Operates only within the current working directory.
+description: Create or update content for the agegr/mindmap-ppt static presentation project from a prose draft, article, speech, report, or notes. Use when Codex needs to turn a written document into the project's project/source.js Markdown mind-map data, choose which nodes need illustrations, generate or request GPT Image 2 illustrations matching the project's restrained presentation style, place assets under project/, and validate the local static files. Operates only within the current working directory.
 ---
 
 # Mindmap PPT Builder
@@ -64,15 +64,15 @@ Use the first line as a short category label and the second line as the main mes
 8. Replace `project/source.js` with:
 
 ```js
-export const sourceMarkdown = `
+window.sourceMarkdown = `
 - ...
 `;
 ```
 
 Escape backticks and `${...}` sequences before writing user-derived text inside the JavaScript template string.
 
-9. Run `npm run check`.
-10. Optional visual validation: run `npm run dev` and inspect the URL printed by Vite (default `http://127.0.0.1:5173/`, may differ if the port is taken) when browser inspection is available.
+9. Validate `project/source.js` by checking that the template string is closed and every referenced asset exists.
+10. Optional visual validation: open `index.html` directly in a browser when browser inspection is available.
 
 ## Mindmap Authoring Rules
 
@@ -96,7 +96,7 @@ Escape backticks and `${...}` sequences before writing user-derived text inside 
 Use `@image` as a metadata continuation line after the node's visible two-line label. The `@image` line is not displayed as node text.
 
 ```js
-export const sourceMarkdown = `
+window.sourceMarkdown = `
 - 产品发布
   三分钟讲清楚新功能
   @image overview.png
@@ -149,6 +149,5 @@ When no image-generation tool is available but an illustration is still useful, 
 
 ## Validation Checklist
 
-- `project/source.js` exports `sourceMarkdown`.
+- `project/source.js` assigns `window.sourceMarkdown`.
 - Asset files exist for every `@image`.
-- `npm run check` passes.

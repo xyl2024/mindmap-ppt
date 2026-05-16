@@ -55,18 +55,15 @@ This is a small static front-end demo for a PPT-like animated mind map.
 
 ## Running And Checking
 
-- Start local dev server: `npm run dev`
-- Syntax check: `npm run check`
-- Dev URL: `http://127.0.0.1:5173/`
-
-The dev server is a dependency-free Node.js static server. If `5173` is occupied by a stale process, restart that process before validating in the browser.
+- Preview locally by opening `index.html` directly in a browser.
+- No Node.js server, build step, or runtime dependency is required.
 
 ## Core Files
 
 - `index.html`: page shell and top controls.
 - `project/source.js`: project Markdown data. Replace this file to change the mind map content.
 - `project/`: project Markdown data and local assets referenced by `@image`.
-- `src/main.js`: imports project data, parses Markdown, handles preorder navigation, layout model, HTML node sync, SVG link sync.
+- `src/main.js`: reads project data from `window.sourceMarkdown`, parses Markdown, handles preorder navigation, layout model, HTML node sync, SVG link sync.
 - `src/styles.css`: page styling, node/link styling, slider styling, animations.
 - `p.md`: original product prompt/spec.
 

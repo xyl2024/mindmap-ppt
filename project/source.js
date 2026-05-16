@@ -1,4 +1,4 @@
-export const sourceMarkdown = `
+window.sourceMarkdown = `
 - Mindmap PPT
   把文稿讲成可播放导图
   @image generated/product-overview.png
@@ -45,9 +45,9 @@ export const sourceMarkdown = `
           - 图片素材
             用 @image 引用本地资源
         - 使用方式
-          本地预览或静态部署
+          直接打开或静态部署
           - 本地预览
-            npm run dev
+            双击 index.html
           - 静态部署
             GitHub Pages、Netlify、Nginx、CDN
 `;

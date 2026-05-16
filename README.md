@@ -2,7 +2,7 @@
 
 把文章、报告、演讲稿或笔记交给 Agent，生成一个可播放的思维导图 PPT。
 
-你只需要关心“要讲什么、讲给谁、想要什么风格”。Agent 会负责拆结构、写导图内容、整理配图、启动预览和检查结果。
+你只需要关心“要讲什么、讲给谁、想要什么风格”。Agent 会负责拆结构、写导图内容、整理配图和检查结果。
 
 在线演示：[https://agegr.github.io/mindmap-ppt/](https://agegr.github.io/mindmap-ppt/)
 
@@ -10,7 +10,7 @@
 
 1. 准备你的原始材料：文章、会议纪要、产品文档、课程笔记、汇报提纲都可以。
 2. 让 Agent 使用 `mindmap-ppt-builder` 生成 Mindmap PPT。可以指定目标受众、演示时长、希望风格、重点信息等。
-3. 打开本地预览，继续让 Agent 调整结构、文案或配图。
+3. 直接打开 `index.html` 预览，继续让 Agent 调整结构、文案或配图。
 
 如果需要手动修改思维导图的内容，可以编辑：
 
@@ -34,15 +34,7 @@ npx skills add agegr/mindmap-ppt --skill mindmap-ppt-builder --agent codex --glo
 
 ## 本地预览
 
-```bash
-npm run dev
-```
-
-打开：
-
-```text
-http://127.0.0.1:5173/
-```
+直接双击打开 `index.html`，或在浏览器中选择“打开文件”并选中 `index.html`。
 
 ## 播放操作
 
