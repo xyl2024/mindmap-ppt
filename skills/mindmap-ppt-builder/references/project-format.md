@@ -1,20 +1,38 @@
-# Project Format Reference
+# 项目格式参考
 
-## Repository
+## 产物结构
 
-Target repo: `https://github.com/agegr/mindmap-ppt`
+完整的 Mindmap PPT 产物是一个零依赖静态文件夹：
 
-Core files:
+```text
+<输出目录>/
+├── index.html
+├── src/
+│   ├── main.js
+│   └── styles.css
+└── project/
+    ├── source.js
+    └── <本地图片资源>
+```
 
-- `project/source.js`: project content and image references.
-- `project/`: project content and local illustration assets.
-- `src/main.js`: parser, navigation, layout, camera, node/image rendering.
-- `src/styles.css`: visual style and animations.
-- `AGENTS.md`: source-of-truth project rules.
+直接用浏览器打开 `index.html` 即可预览。
+
+## 静态播放器模板
+
+播放器文件已随 skill 内置：
+
+```text
+assets/static-template/index.html
+assets/static-template/src/main.js
+assets/static-template/src/styles.css
+assets/static-template/project/source.js
+```
+
+新建 mindmap-ppt 时，先复制播放器模板，再用生成内容替换 `project/source.js`。更新已有 mindmap-ppt 时，除非用户要求刷新播放器，否则只编辑 `project/source.js` 和图片资源。
 
 ## `project/source.js`
 
-Use this shape:
+使用这个结构：
 
 ```js
 window.sourceMarkdown = `
@@ -26,58 +44,41 @@ window.sourceMarkdown = `
 `;
 ```
 
-Parsing rules:
+解析规则：
 
-- Lines matching `- text` create nodes.
-- Indented continuation lines add to the current node label.
-- `@image path` attaches one image to the current node and is not visible text.
-- Short image paths such as `overview.png` resolve to `./project/overview.png`.
-- Nested short paths such as `image-asset-1/a.jpg` resolve to `./project/image-asset-1/a.jpg`.
-- Explicit paths beginning with `./`, `../`, `/`, `http:`, `https:`, or `data:` are used as-is.
-- Multiple `@image` lines on one node: last one wins.
-- The tree is traversed preorder.
+- 匹配 `- text` 的行会创建节点。
+- 缩进的连续行会追加到当前节点标签中。
+- `@image path` 会给当前节点附加一张图片，并且不会显示为节点文字。
+- 短图片路径如 `overview.png` 会解析为 `./project/overview.png`。
+- 嵌套短路径如 `image-asset-1/a.jpg` 会解析为 `./project/image-asset-1/a.jpg`。
+- 以 `./`、`../`、`/`、`http:`、`https:` 或 `data:` 开头的显式路径会原样使用。
+- 同一节点出现多行 `@image` 时，最后一行生效。
+- 整棵树按 preorder 遍历。
 
-## Node Text
+## 节点文字
 
-Two-line node convention:
+两行节点约定：
 
-- first line: subtitle/category, smaller text
-- second line: main title, normal title text
+- 第一行：副标题/分类，显示为较小文字。
+- 第二行：主标题，显示为普通标题文字。
 
-Single-line nodes render as title only.
+单行节点只显示为标题。
 
-Control readouts collapse multiline labels into `subtitle / title`.
+控制区读数会把多行标签折叠成 `副标题 / 主标题`。
 
-## Image Behavior
+## 图片行为
 
-Images render inside node cards:
+图片显示在节点卡片内部：
 
-- selected image node: expanded image below text
-- non-selected image node: thumbnail below text
-- no image: no image space
+- 选中的图片节点：文字下方显示展开图片。
+- 未选中的图片节点：文字下方显示缩略图。
+- 没有图片的节点：不预留图片空间。
 
-Supported formats: PNG, JPG/JPEG, SVG via browser `<img>`.
+支持浏览器 `<img>` 能加载的 PNG、JPG/JPEG、SVG 等格式。
 
-Use `object-fit: contain`; avoid crop-dependent compositions.
+## 交互
 
-## Current Visual Style
-
-Match the existing presentation style:
-
-- background: warm off-white, light grid/dot texture
-- selected node: dark teal `#183a4a`
-- accent: orange `#d8894f`
-- completed node fill: pale green `#eef7f3`
-- path node fill: near-white `#fffdf8`
-- restrained shadows
-- small `8px` radii
-- no heavy decorative effects, gradient blobs, dense textures, photorealism, or text inside generated images
-
-## Camera And Layout Constraints
-
-- Current path is horizontal.
-- Already visited non-path branches appear above their parent.
-- Unvisited nodes are hidden.
-- Node sizes are real HTML/CSS sizes; do not rely on SVG text measurement.
-- Links are SVG curves from node border to node border.
-- Camera uses actual viewport size and only auto-scales when user changes the zoom slider.
+- 上下方向键、Page Up/Page Down、滚轮和顶部按钮按 preorder 切换节点。
+- 进度滑条跳转到指定序号。
+- Zoom 滑条缩放画布。
+- 点击可见节点只平移镜头，不改变选中节点，也不展开该节点图片。

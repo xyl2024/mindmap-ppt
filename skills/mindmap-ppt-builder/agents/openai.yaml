@@ -1,4 +1,4 @@
 interface:
-  display_name: "Mindmap PPT Builder"
-  short_description: "Turn prose into project/source.js mind-map presentations with matching illustrations"
-  default_prompt: "Use this skill to turn the provided document into a project/source.js mind-map for agegr/mindmap-ppt, generate fitting illustrations for selected nodes when possible, and validate the project."
+  display_name: "Mindmap PPT 生成器"
+  short_description: "生成可直接用浏览器打开的完整静态思维导图 PPT 文件夹"
+  default_prompt: "使用这个 skill，把我提供的材料转换成完整的离线静态 Mindmap PPT 产物，包括 index.html、src 播放器文件、project/source.js 和本地插图。如果是修改已有演示，除非我要求刷新播放器，否则只更新 project/source.js 和 project 资源。"
