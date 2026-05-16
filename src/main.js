@@ -55,6 +55,12 @@ let wheelDeltaBuffer = 0;
 let wheelNavigationTimer = null;
 let swipeStart = null;
 
+// Canvas panning state
+let isSpaceHeld = false;
+let isPanning = false;
+let panStart = null;
+let cameraPan = { x: 0, y: 0 };
+
 assignTreeMetadata(root);
 preorder = collectPreorder(root);
 idToNode = new Map(preorder.map((node) => [node.id, node]));
@@ -82,12 +88,18 @@ activeScaleSlider.addEventListener("input", (event) => {
   render();
 });
 window.addEventListener("keydown", handleKeydown);
+window.addEventListener("keyup", handleKeyup);
 window.addEventListener("wheel", handleWheel, { passive: false });
 window.addEventListener("resize", () => render());
 mindmap.addEventListener("touchstart", handleTouchStart, { passive: true });
 mindmap.addEventListener("touchmove", handleTouchMove, { passive: false });
 mindmap.addEventListener("touchend", handleTouchEnd, { passive: false });
 mindmap.addEventListener("touchcancel", resetSwipeStart);
+
+// Canvas panning events
+mindmap.addEventListener("mousedown", handleMouseDown);
+window.addEventListener("mousemove", handleMouseMove);
+window.addEventListener("mouseup", handleMouseUp);
 
 render();
 
@@ -98,6 +110,14 @@ function handleKeydown(event) {
       imageViewer.close();
     }
 
+    return;
+  }
+
+  // Track space key for panning
+  if (event.key === " ") {
+    event.preventDefault();
+    isSpaceHeld = true;
+    updateCursor();
     return;
   }
 
@@ -112,6 +132,17 @@ function handleKeydown(event) {
     event.preventDefault();
     setActiveIndex(activeIndex + step);
   }
+}
+
+function handleKeyup(event) {
+  if (event.key === " ") {
+    isSpaceHeld = false;
+    updateCursor();
+  }
+}
+
+function updateCursor() {
+  mindmap.style.cursor = isSpaceHeld ? "grab" : "default";
 }
 
 function handleWheel(event) {
@@ -216,6 +247,40 @@ function handleTouchEnd(event) {
 
 function resetSwipeStart() {
   swipeStart = null;
+}
+
+function handleMouseDown(event) {
+  if (event.button !== 0 || !isSpaceHeld) {
+    return;
+  }
+
+  event.preventDefault();
+  isPanning = true;
+  panStart = { x: event.clientX, y: event.clientY };
+  mindmap.style.cursor = "grabbing";
+}
+
+function handleMouseMove(event) {
+  if (!isPanning || !panStart) {
+    return;
+  }
+
+  const dx = (event.clientX - panStart.x) / cameraZoom;
+  const dy = (event.clientY - panStart.y) / cameraZoom;
+  cameraPan.x += dx;
+  cameraPan.y += dy;
+  panStart = { x: event.clientX, y: event.clientY };
+  render();
+}
+
+function handleMouseUp(event) {
+  if (event.button !== 0 || !isPanning) {
+    return;
+  }
+
+  isPanning = false;
+  panStart = null;
+  updateCursor();
 }
 
 function parseMarkdownTree(markdown) {
@@ -654,7 +719,7 @@ function positionMapLayer(viewport, model) {
   mapLayer.style.width = `${canvas.width}px`;
   mapLayer.style.height = `${canvas.height}px`;
   linkLayer.setAttribute("viewBox", `0 0 ${canvas.width} ${canvas.height}`);
-  mapLayer.style.transform = `scale(${cameraZoom}) translate(${-viewport.x}px, ${-viewport.y}px)`;
+  mapLayer.style.transform = `scale(${cameraZoom}) translate(${-viewport.x + cameraPan.x}px, ${-viewport.y + cameraPan.y}px)`;
 }
 
 function computeCanvasSize(model, viewport) {
