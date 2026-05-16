@@ -859,10 +859,10 @@ function createNodeContent() {
 }
 
 function updateNodeContent(content, node, isActive) {
-  const [subtitle, ...titleLines] = node.label.split("\n");
-  const title = titleLines.length > 0 ? titleLines.join(" / ") : subtitle;
+  const [title, ...subtitleLines] = node.label.split("\n");
+  const subtitle = subtitleLines.join("\n");
 
-  content.root.classList.toggle("has-subtitle", titleLines.length > 0);
+  content.root.classList.toggle("has-subtitle", subtitleLines.length > 0);
   content.root.classList.toggle("has-node-image", Boolean(node.image));
   content.root.classList.toggle("image-expanded", Boolean(node.image) && isActive);
   content.subtitle.textContent = subtitle;
@@ -1027,7 +1027,7 @@ function getNextStepLabel(nextNode, isEnd) {
 function updateDeckHeading(label) {
   const heading = splitLabel(label);
 
-  deckSubtitle.textContent = heading.subtitle;
+  deckSubtitle.textContent = heading.subtitle || "Mindmap PPT";
   deckTitle.textContent = heading.title;
 }
 
@@ -1036,12 +1036,13 @@ function formatInlineLabel(label) {
 }
 
 function splitLabel(label) {
-  const [subtitle, ...titleLines] = label.split("\n");
-  const hasSubtitle = titleLines.length > 0;
+  const [title, ...subtitleLines] = label.split("\n");
+  const subtitle = subtitleLines.join("\n");
+  const hasSubtitle = subtitleLines.length > 0;
 
   return {
     hasSubtitle,
     subtitle,
-    title: hasSubtitle ? titleLines.join("\n") : subtitle,
+    title,
   };
 }

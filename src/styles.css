@@ -728,10 +728,12 @@ h1 {
 }
 
 .node-subtitle {
+  order: 2;
   color: #6b745d;
   font-size: 14px;
   font-weight: 850;
-  line-height: 1.1;
+  line-height: 1.2;
+  white-space: pre-line;
 }
 
 .node-content:not(.has-subtitle) .node-subtitle {
@@ -739,15 +741,18 @@ h1 {
 }
 
 .node-title {
+  order: 1;
   color: inherit;
-  font-size: 21px;
-  font-weight: 800;
+  font-size: 23px;
+  font-weight: 900;
   line-height: 1.25;
+  white-space: pre-line;
 }
 
 .node-image {
   --node-image-width: var(--node-image-thumb-width);
   --node-image-max-height: var(--node-image-thumb-height);
+  order: 3;
   appearance: none;
   display: block;
   width: fit-content;
