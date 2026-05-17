@@ -9,12 +9,11 @@ description: 根据提供的资料生成思维导图式的交互式演讲稿（m
 
 生成一个可以直接双击打开的静态思维导图 PPT。完整产物包含：
 
-- `index.html`：静态页面外壳。
-- `src/main.js` 和 `src/styles.css`：内置播放器 UI、布局、动画和交互。
+- `index.html`：单文件，包含全部 CSS 和 JS，直接用浏览器打开即可。
 - `project/source.js`：用 `window.sourceMarkdown` 保存的 Markdown 导图内容。
 - `project/`：由 `@image` 引用的本地图片资源。
 
-用户可以双击 `index.html` 预览。后续只修改内容时，保留播放器文件，只更新 `project/source.js` 和必要的 `project/` 资源。
+用户可以双击 `index.html` 预览。后续只修改内容时，保留 `index.html`，只更新 `project/source.js` 和必要的 `project/` 资源。
 
 只有在需要确认精确语法或图片路径规则时，才读取 `references/project-format.md`。
 
@@ -30,20 +29,19 @@ python scripts/scaffold.py <输出目录>
 
 可选参数：
 
-- `--overwrite-app`：用内置模板刷新 `index.html`、`src/main.js` 和 `src/styles.css`。
+- `--overwrite-app`：用内置模板刷新 `index.html`。
 - `--overwrite-source`：用占位内容替换 `project/source.js`；更新已有 mindmap-ppt 时不要使用，除非用户要求重置。
 
 如果不能运行脚本，就手动复制：
 
 - `assets/static-template/index.html` -> `<输出目录>/index.html`
-- `assets/static-template/src/` -> `<输出目录>/src/`
 - `assets/static-template/project/source.js` -> `<输出目录>/project/source.js`，仅新建 mindmap-ppt 时复制
 
 ## 工作区规则
 
 - 只在当前目录或用户明确指定的输出目录内工作。
 - 新建 mindmap-ppt ：先从 `assets/static-template/` 创建或刷新播放器文件，再写入 `project/source.js` 和图片资源。
-- 更新已有 mindmap-ppt ：如果 `index.html`、`src/main.js`、`src/styles.css` 已存在，除非用户要求更新播放器，否则不要改这些文件；只修改 `project/source.js` 和 `project/` 资源。
+- 更新已有 mindmap-ppt ：如果 `index.html` 已存在，除非用户要求，否则不要改这个文件；只修改 `project/source.js` 和 `project/` 资源。
 - 不要删除已有 `project/` 资源，除非用户明确要求清理。
 
 ## 工作流程
@@ -94,7 +92,7 @@ window.sourceMarkdown = `
 ```
 
 10. 结束前检查：
-    - 完整的 mindmap-ppt 必须包含 `index.html`、`src/main.js`、`src/styles.css` 和 `project/source.js`。
+    - 完整的 mindmap-ppt 必须包含 `index.html` 和 `project/source.js`。
     - `project/source.js` 必须给 `window.sourceMarkdown` 赋值，并且模板字符串已闭合。
     - 每个 `@image` 都指向存在的本地资源；明确使用外部链接或 data URL 的情况除外。
     - 不需要 `npm run`、本地服务器或构建步骤；直接用浏览器打开 `index.html` 预览。
@@ -138,21 +136,6 @@ window.sourceMarkdown = `
 - `@image image-asset-1/pain-points.jpg` -> `./project/image-asset-1/pain-points.jpg`
 - `@image diagrams/demo-flow.svg` -> `./project/diagrams/demo-flow.svg`
 
-## 图片风格
+## 图片资源
 
-生成插图时使用这个提示词：
-
-```text
-为浅色 PPT 思维导图节点创建一张干净的演示插图。
-主题：<节点核心意思>。
-包含：<来自原文的 2-4 个具体视觉元素>。
-风格：克制的矢量感编辑插画，暖白背景，深青色 #183a4a，浅绿色 #eef7f3，橙色强调 #d8894f，简单几何形状，轻微阴影，8px 小圆角卡片感，不要照片写实，不要 logo，不要复杂装饰；只有在有助于理解时使用极少量短文字。
-构图：居中，留白充足，缩略图尺寸下仍可读，16:10 比例。
-```
-
-创建 SVG 占位图时：
-
-- 尺寸用 `1280x800`。
-- 暖白背景，深青色 `#183a4a`，浅绿色 `#eef7f3`，橙色强调 `#d8894f`。
-- 使用抽象流程块、箭头、卡片、时间线或简单图解。
-- 只有在有助于理解时使用极少量短文字。
+- 如果当前存在生成图片的工具，且用户没有提供图片资源时，需要在开始工作之前询问用户是否使用某某生图工具生成图片资源。

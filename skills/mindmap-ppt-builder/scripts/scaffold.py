@@ -16,7 +16,7 @@ HELP_TEXT = """用法：python scripts/scaffold.py [输出目录] [--overwrite-a
 
 参数：
   输出目录              可选，默认为当前目录
-  --overwrite-app       覆盖 index.html 和 src 播放器文件
+  --overwrite-app       覆盖 index.html 播放器文件
   --overwrite-source    覆盖 project/source.js 占位内容
   -h, --help            显示此帮助信息
 """
@@ -62,16 +62,11 @@ def parse_args(argv: list[str]) -> tuple[Path, bool, bool]:
 
 def main() -> int:
     target, overwrite_app, overwrite_source = parse_args(sys.argv[1:])
-    app_files = [
-        "index.html",
-        "src/main.js",
-        "src/styles.css",
-    ]
+    app_file = "index.html"
     source_file = "project/source.js"
 
-    for rel in app_files:
-        status = copy_file(TEMPLATE_DIR / rel, target / rel, overwrite=overwrite_app)
-        print(f"{status}: {target / rel}")
+    status = copy_file(TEMPLATE_DIR / app_file, target / app_file, overwrite=overwrite_app)
+    print(f"{status}: {target / app_file}")
 
     status = copy_file(TEMPLATE_DIR / source_file, target / source_file, overwrite=overwrite_source)
     print(f"{status}: {target / source_file}")

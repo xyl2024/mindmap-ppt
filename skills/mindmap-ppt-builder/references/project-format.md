@@ -6,12 +6,9 @@
 
 ```text
 <输出目录>/
-├── index.html
-├── src/
-│   ├── main.js
-│   └── styles.css
+├── index.html          # CSS + JS 全部内联
 └── project/
-    ├── source.js
+    ├── source.js       # 数据文件
     └── <本地图片资源>
 ```
 
@@ -19,16 +16,14 @@
 
 ## 静态播放器模板
 
-播放器文件已随 skill 内置：
+播放器已内置在 skill 目录中：
 
 ```text
-assets/static-template/index.html
-assets/static-template/src/main.js
-assets/static-template/src/styles.css
-assets/static-template/project/source.js
+assets/static-template/index.html      # 单文件，包含全部 CSS + JS
+assets/static-template/project/source.js  # 数据文件模板
 ```
 
-新建 mindmap-ppt 时，先复制播放器模板，再用生成内容替换 `project/source.js`。更新已有 mindmap-ppt 时，除非用户要求刷新播放器，否则只编辑 `project/source.js` 和图片资源。
+新建 mindmap-ppt 时，先复制播放器模板（仅 `index.html`），再用生成内容替换 `project/source.js`。更新已有 mindmap-ppt 时，除非用户要求刷新播放器，否则只编辑 `project/source.js` 和图片资源。
 
 ## `project/source.js`
 
