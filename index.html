@@ -1285,6 +1285,7 @@ const swipeNavigation = {
 
 let activeIndex = 0;
 let levelReview = null;
+let pendingLevelReviews = [];
 let root = parseMarkdownTree(sourceMarkdown);
 let preorder = [];
 let idToNode = new Map();
@@ -1690,17 +1691,30 @@ function navigateByStep(step) {
 
   if (levelReview) {
     levelReview = null;
+    if (step < 0) {
+      pendingLevelReviews = [];
+      render();
+      return;
+    }
+
+    const nextReview = pendingLevelReviews.shift();
+    if (nextReview) {
+      levelReview = nextReview;
+      render();
+      return;
+    }
+
     if (step > 0) {
       setActiveIndex(activeIndex + step);
-    } else {
-      render();
     }
     return;
   }
 
   const activeNode = preorder[activeIndex] ?? null;
-  if (step > 0 && shouldShowLevelReview(activeNode)) {
-    levelReview = createLevelReview(activeNode);
+  const completedLevelReviews = step > 0 ? collectCompletedLevelReviews(activeNode) : [];
+  if (completedLevelReviews.length > 0) {
+    levelReview = completedLevelReviews.shift();
+    pendingLevelReviews = completedLevelReviews;
     render();
     return;
   }
@@ -1710,22 +1724,40 @@ function navigateByStep(step) {
 
 function setActiveIndex(index) {
   levelReview = null;
+  pendingLevelReviews = [];
   activeIndex = Math.max(0, Math.min(index, preorder.length));
   render();
 }
 
-function shouldShowLevelReview(node) {
-  if (!node?.parent) {
-    return false;
+function collectCompletedLevelReviews(node) {
+  if (!node || node.children.length > 0) {
+    return [];
   }
-  const siblings = node.parent.children;
-  return siblings.length > 1 && siblings[siblings.length - 1] === node && node.children.length === 0;
+
+  const reviews = [];
+  let current = node;
+  while (current.parent) {
+    const parent = current.parent;
+    const siblings = parent.children;
+    if (siblings[siblings.length - 1] !== current) {
+      break;
+    }
+    if (siblings.length > 1) {
+      reviews.push(createLevelReview(parent, node));
+    }
+    current = parent;
+  }
+  return reviews;
 }
 
-function createLevelReview(node) {
+function hasCompletedLevelReviews(node) {
+  return collectCompletedLevelReviews(node).length > 0;
+}
+
+function createLevelReview(parent, activeNode) {
   return {
-    parentId: node.parent.id,
-    activeNodeId: node.id,
+    parentId: parent.id,
+    activeNodeId: activeNode.id,
   };
 }
 
@@ -1961,7 +1993,7 @@ function buildVisibleModel(activeNode) {
 
 function buildLevelReviewModel(activeNode, review) {
   const parent = idToNode.get(review.parentId);
-  if (!parent || activeNode.parent !== parent) {
+  if (!parent || !parent.children.some((child) => isAncestorOrSelf(child, activeNode))) {
     levelReview = null;
     return buildVisibleModel(activeNode);
   }
@@ -2054,6 +2086,17 @@ function pathToRoot(node) {
   }
 
   return path;
+}
+
+function isAncestorOrSelf(ancestor, node) {
+  let current = node;
+  while (current) {
+    if (current === ancestor) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
 }
 
 function measureSubtree(node, visibleIds) {
@@ -2660,7 +2703,7 @@ function updateControls() {
 }
 
 function getNextStepLabel(nextNode, isEnd, activeNode) {
-  if (!levelReview && shouldShowLevelReview(activeNode)) {
+  if (!levelReview && hasCompletedLevelReviews(activeNode)) {
     return {
       hasSubtitle: true,
       subtitle: "下一步",
