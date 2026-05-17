@@ -80,12 +80,12 @@ h1 {
 
 .node-scrubber {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--slider-readout-width);
+  grid-template-columns: minmax(0, 1fr) var(--slider-readout-width) auto;
   align-items: center;
   gap: var(--slider-readout-gap);
   min-width: 0;
   height: 34px;
-  padding-right: var(--control-readout-right);
+  padding-right: 0;
 }
 
 #nodeSlider {
@@ -165,6 +165,46 @@ h1 {
   font-size: 0.94rem;
   font-weight: 800;
   text-align: right;
+}
+
+.expand-all-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 72px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgba(24, 58, 74, 0.14);
+  border-radius: 8px;
+  color: #fffdf8;
+  background: #183a4a;
+  box-shadow: 0 6px 14px rgba(24, 36, 42, 0.12);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.expand-all-button:hover,
+.expand-all-button:focus-visible {
+  border-color: rgba(216, 137, 79, 0.48);
+  background: #214b5e;
+}
+
+.expand-all-button:focus-visible {
+  outline: 3px solid rgba(216, 137, 79, 0.22);
+  outline-offset: 2px;
+}
+
+.expand-all-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
 }
 
 .node-readout {
@@ -650,8 +690,13 @@ body.global-view-dragging .global-map-viewport {
   width: 100%;
   height: 100%;
   min-height: 100vh;
+  cursor: grab;
   overscroll-behavior: contain;
   touch-action: none;
+}
+
+body.canvas-panning #mindmap {
+  cursor: grabbing;
 }
 
 .map-layer,
@@ -669,6 +714,10 @@ body.global-view-dragging .global-map-viewport {
 }
 
 body.global-view-dragging .map-layer {
+  transition: none;
+}
+
+body.canvas-panning .map-layer {
   transition: none;
 }
 
@@ -1174,10 +1223,11 @@ body.global-view-dragging .map-layer {
               <span aria-hidden="true">−</span>
             </button>
             <div class="control-main" id="controlsBody">
-              <label class="node-scrubber" for="nodeSlider">
+              <div class="node-scrubber">
                 <input id="nodeSlider" type="range" min="0" max="0" value="0" aria-label="快速定位节点" />
                 <span class="counter" id="counter">1 / 1</span>
-              </label>
+                <button class="expand-all-button" id="expandAllButton" type="button">全部展开</button>
+              </div>
               <div class="node-readout" aria-live="polite">
                 <div class="readout-card">
                   <div class="readout-icon" aria-hidden="true">
@@ -1247,6 +1297,7 @@ const controls = document.querySelector(".controls");
 const controlsBody = document.querySelector("#controlsBody");
 const controlsToggle = document.querySelector("#controlsToggle");
 const nodeSlider = document.querySelector("#nodeSlider");
+const expandAllButton = document.querySelector("#expandAllButton");
 const zoomSlider = document.querySelector("#zoomSlider");
 const zoomValue = document.querySelector("#zoomValue");
 const activeScaleSlider = document.querySelector("#activeScaleSlider");
@@ -1300,7 +1351,6 @@ let wheelNavigationTimer = null;
 let swipeStart = null;
 
 // Canvas panning state
-let isSpaceHeld = false;
 let isPanning = false;
 let panStart = null;
 let cameraPan = { x: 0, y: 0 };
@@ -1326,6 +1376,9 @@ controlsToggle.addEventListener("click", () => {
 nodeSlider.addEventListener("input", (event) => {
   setActiveIndex(Number(event.target.value));
 });
+expandAllButton.addEventListener("click", () => {
+  setActiveIndex(preorder.length);
+});
 zoomSlider.addEventListener("input", (event) => {
   cameraZoom = Number(event.target.value) / 100;
   render();
@@ -1335,7 +1388,6 @@ activeScaleSlider.addEventListener("input", (event) => {
   render();
 });
 window.addEventListener("keydown", handleKeydown);
-window.addEventListener("keyup", handleKeyup);
 window.addEventListener("wheel", handleWheel, { passive: false });
 window.addEventListener("resize", () => render());
 mindmap.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -1360,14 +1412,6 @@ function handleKeydown(event) {
     return;
   }
 
-  // Track space key for panning
-  if (event.key === " ") {
-    event.preventDefault();
-    isSpaceHeld = true;
-    updateCursor();
-    return;
-  }
-
   const stepByKey = {
     ArrowRight: 1,
     PageDown: 1,
@@ -1381,15 +1425,8 @@ function handleKeydown(event) {
   }
 }
 
-function handleKeyup(event) {
-  if (event.key === " ") {
-    isSpaceHeld = false;
-    updateCursor();
-  }
-}
-
 function updateCursor() {
-  mindmap.style.cursor = isSpaceHeld ? "grab" : "default";
+  mindmap.style.cursor = isPanning ? "grabbing" : "grab";
 }
 
 function handleWheel(event) {
@@ -1491,13 +1528,14 @@ function resetSwipeStart() {
 }
 
 function handleMouseDown(event) {
-  if (event.button !== 0 || !isSpaceHeld) {
+  if (event.button !== 0 || isInteractivePanTarget(event.target)) {
     return;
   }
   event.preventDefault();
   isPanning = true;
   panStart = { x: event.clientX, y: event.clientY };
-  mindmap.style.cursor = "grabbing";
+  document.body.classList.add("canvas-panning");
+  updateCursor();
 }
 
 function handleMouseMove(event) {
@@ -1528,7 +1566,12 @@ function handleMouseUp(event) {
   }
   isPanning = false;
   panStart = null;
+  document.body.classList.remove("canvas-panning");
   updateCursor();
+}
+
+function isInteractivePanTarget(target) {
+  return target instanceof Element && Boolean(target.closest("button, input, textarea, select, a"));
 }
 
 function handleGlobalViewportMouseDown(event) {
@@ -2692,6 +2735,8 @@ function updateControls() {
   counter.textContent = `${activeIndex + 1} / ${endIndex + 1}`;
   nodeSlider.value = String(activeIndex);
   nodeSlider.style.setProperty("--slider-progress", `${sliderProgress}%`);
+  expandAllButton.disabled = isEnd;
+  expandAllButton.setAttribute("aria-disabled", String(isEnd));
   zoomSlider.value = String(Math.round(cameraZoom * 100));
   zoomValue.textContent = `${Math.round(cameraZoom * 100)}%`;
   activeScaleSlider.value = String(Math.round(activeScale * 100));
