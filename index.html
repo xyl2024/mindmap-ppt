@@ -784,23 +784,6 @@ body.global-view-dragging .map-layer {
     opacity 420ms ease;
 }
 
-.mind-node:focus-visible {
-  outline: none;
-}
-
-.mind-node:focus-visible .node-content,
-.mind-node:hover .node-content {
-  box-shadow:
-    0 0 0 3px rgba(216, 137, 79, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.94);
-}
-
-.mind-node.camera-target .node-content {
-  box-shadow:
-    0 0 0 3px rgba(24, 58, 74, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.94);
-}
-
 .mind-node.entering {
   opacity: 1;
 }
@@ -1306,7 +1289,6 @@ let preorder = [];
 let idToNode = new Map();
 let renderedNodes = new Map();
 let renderedLinks = new Map();
-let cameraTargetIndex = null;
 let currentNodeMetrics = new Map();
 let imageConstraints = null;
 let cameraZoom = Number(zoomSlider.value) / 100;
@@ -1585,7 +1567,6 @@ function handleGlobalViewportDrag(event) {
   };
   const desiredLogicalViewport = globalViewState.project.unprojectRect(clampedMapRect);
 
-  cameraTargetIndex = null;
   cameraPan.x = globalViewState.baseViewport.x - desiredLogicalViewport.x;
   cameraPan.y = globalViewState.baseViewport.y - desiredLogicalViewport.y;
   render();
@@ -1703,7 +1684,6 @@ function collectPreorder(node, list = []) {
 
 function setActiveIndex(index) {
   activeIndex = Math.max(0, Math.min(index, preorder.length));
-  cameraTargetIndex = null;
   render();
 }
 
@@ -1711,7 +1691,7 @@ function render() {
   const activeNode = preorder[activeIndex] ?? null;
   currentNodeMetrics = measureAllNodes(preorder, activeNode);
   const model = activeNode ? buildVisibleModel(activeNode) : buildEndModel();
-  const viewport = computeViewport(model, cameraTargetIndex);
+  const viewport = computeViewport(model);
 
   syncLinks(model.links);
   syncNodes(model.nodes, activeNode);
@@ -2306,7 +2286,6 @@ function syncNodes(nodes, activeNode) {
       entry.group.classList.toggle("active", node.isActive);
       entry.group.classList.toggle("path-node", node.isPath);
       entry.group.classList.toggle("complete-node", node.isComplete);
-      entry.group.classList.toggle("camera-target", node.preorderIndex === cameraTargetIndex);
       entry.group.dataset.nodeId = node.id;
       if (activeNode && node.id === activeNode.id) {
         entry.group.setAttribute("aria-current", "true");
@@ -2324,15 +2303,6 @@ function syncNodes(nodes, activeNode) {
 function createNodeElement(node) {
   const group = document.createElement("div");
   group.classList.add("mind-node", "entering");
-  group.setAttribute("role", "button");
-  group.setAttribute("tabindex", "0");
-  group.addEventListener("click", () => focusCameraOnNode(node.id));
-  group.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      focusCameraOnNode(node.id);
-    }
-  });
 
   const content = createNodeContent();
   updateNodeContent(content, node, node.preorderIndex === activeIndex, null);
@@ -2342,16 +2312,6 @@ function createNodeElement(node) {
   });
 
   return { group, content, removalTimer: null };
-}
-
-function focusCameraOnNode(nodeId) {
-  const node = idToNode.get(nodeId);
-  if (!node) {
-    return;
-  }
-
-  cameraTargetIndex = node.preorderIndex === activeIndex ? null : node.preorderIndex;
-  render();
 }
 
 function createNodeContent() {
