@@ -44,10 +44,11 @@ window.sourceMarkdown = `
 - 匹配 `- text` 的行会创建节点。
 - 缩进的连续行会追加到当前节点标签中。
 - `@image path` 会给当前节点附加一张图片，并且不会显示为节点文字。
+- 每个节点最多写一条 `@image`；当前播放器只支持每个节点渲染 1 张图片，需要多图时拆成多个节点。
 - 短图片路径如 `overview.png` 会解析为 `./project/overview.png`。
 - 嵌套短路径如 `image-asset-1/a.jpg` 会解析为 `./project/image-asset-1/a.jpg`。
 - 以 `./`、`../`、`/`、`http:`、`https:` 或 `data:` 开头的显式路径会原样使用。
-- 同一节点出现多行 `@image` 时，最后一行生效。
+- 如果旧内容中同一节点已经出现多行 `@image`，解析时只有最后一行生效；更新时应改为单节点单图。
 - 整棵树按 preorder 遍历。
 
 ## 节点文字

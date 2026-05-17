@@ -11,9 +11,9 @@ description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 
 核心产物：
 - `project/source.js`：演示内容文件，必须包含合理的 `window.sourceMarkdown`。
-- `project/`：可选图片资源目录，节点用 `@image` 引用本地图片。
-- `images/`：项目级图片素材目录。
-- `codes/`：项目级代码或代码转图素材目录。
+- `project/`：内容和本地资源目录，节点用 `@image` 引用本地图片。
+- `project/images/`：项目级图片素材目录。
+- `project/codes/`：项目级代码或代码转图素材目录。
 - `index.html`：核心 Mindmap PPT 播放器代码文件。
 
 ## 核心原则
@@ -49,7 +49,7 @@ description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 python scripts/scaffold.py <项目名> [输出目录]
 ```
 
-脚手架会在 `<输出目录>/<项目名>/` 下创建基础目录结构，包含 `project/`、`images/` 和 `codes/`；不传输出目录时默认在 `<当前目录>/<项目名>/` 下创建。
+脚手架会在 `<输出目录>/<项目名>/` 下创建基础目录结构，包含 `project/`、`project/images/` 和 `project/codes/`；不传输出目录时默认在 `<当前目录>/<项目名>/` 下创建。
 
 可选参数：
 - `--title <标题>`：替换 HTML 标题。
@@ -78,6 +78,7 @@ window.sourceMarkdown = `
 - 默认 2-4 个主分支；材料逻辑更适合其他结构时，以材料为准。
 - 一个节点只表达一个清楚观点；拥挤就拆分，太碎就合并。
 - 优先使用两行标签：短标题 + 简洁说明。
+- 一个节点最多添加一条 `@image`，当前播放器只支持每个节点渲染 1 张图片；需要多图时拆成多个节点。
 - 写入 JavaScript 模板字符串前，转义反引号和 `${...}`。
 
 只有在需要确认精确解析或路径规则时，才读取 `references/project-format.md`。
@@ -90,5 +91,6 @@ window.sourceMarkdown = `
 
 - `project/source.js` 包含预期的 `window.sourceMarkdown` 赋值。
 - Markdown 缩进能表达预期树结构。
+- 每个节点最多包含一条 `@image`。
 - 每个本地 `@image` 都指向 `project/` 下存在的文件。
 - 不删除已有 `project/` 资源，除非用户明确要求清理。

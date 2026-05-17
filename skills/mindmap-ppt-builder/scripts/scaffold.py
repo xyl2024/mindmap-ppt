@@ -138,7 +138,7 @@ def main() -> int:
     print(f"{status}: {target / source_file}")
 
     for dirname in ("images", "codes"):
-        directory = target / dirname
+        directory = target / "project" / dirname
         status = ensure_dir(directory)
         print(f"{status}: {directory}")
 
