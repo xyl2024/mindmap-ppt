@@ -1284,6 +1284,8 @@ const swipeNavigation = {
 };
 
 let activeIndex = 0;
+let levelReview = null;
+let pendingLevelReviews = [];
 let root = parseMarkdownTree(sourceMarkdown);
 let preorder = [];
 let idToNode = new Map();
@@ -1375,7 +1377,7 @@ function handleKeydown(event) {
   const step = stepByKey[event.key];
   if (step) {
     event.preventDefault();
-    setActiveIndex(activeIndex + step);
+    navigateByStep(step);
   }
 }
 
@@ -1412,7 +1414,7 @@ function handleWheel(event) {
   // Only move one step per wheel event, regardless of accumulated delta
   if (Math.abs(wheelDeltaBuffer) >= wheelNavigation.threshold) {
     const direction = wheelDeltaBuffer > 0 ? 1 : -1;
-    setActiveIndex(activeIndex + direction);
+    navigateByStep(direction);
     wheelDeltaBuffer = 0;
   }
 
@@ -1479,7 +1481,7 @@ function handleTouchEnd(event) {
     Math.abs(dy) > Math.abs(dx) * swipeNavigation.dominanceRatio;
   if (isVerticalSwipe) {
     event.preventDefault();
-    setActiveIndex(activeIndex + (dy < 0 ? 1 : -1));
+    navigateByStep(dy < 0 ? 1 : -1);
   }
   resetSwipeStart();
 }
@@ -1682,15 +1684,91 @@ function collectPreorder(node, list = []) {
   return list;
 }
 
+function navigateByStep(step) {
+  if (!step) {
+    return;
+  }
+
+  if (levelReview) {
+    levelReview = null;
+    if (step < 0) {
+      pendingLevelReviews = [];
+      render();
+      return;
+    }
+
+    const nextReview = pendingLevelReviews.shift();
+    if (nextReview) {
+      levelReview = nextReview;
+      render();
+      return;
+    }
+
+    if (step > 0) {
+      setActiveIndex(activeIndex + step);
+    }
+    return;
+  }
+
+  const activeNode = preorder[activeIndex] ?? null;
+  const completedLevelReviews = step > 0 ? collectCompletedLevelReviews(activeNode) : [];
+  if (completedLevelReviews.length > 0) {
+    levelReview = completedLevelReviews.shift();
+    pendingLevelReviews = completedLevelReviews;
+    render();
+    return;
+  }
+
+  setActiveIndex(activeIndex + step);
+}
+
 function setActiveIndex(index) {
+  levelReview = null;
+  pendingLevelReviews = [];
   activeIndex = Math.max(0, Math.min(index, preorder.length));
   render();
+}
+
+function collectCompletedLevelReviews(node) {
+  if (!node || node.children.length > 0) {
+    return [];
+  }
+
+  const reviews = [];
+  let current = node;
+  while (current.parent) {
+    const parent = current.parent;
+    const siblings = parent.children;
+    if (siblings[siblings.length - 1] !== current) {
+      break;
+    }
+    if (siblings.length > 1) {
+      reviews.push(createLevelReview(parent, node));
+    }
+    current = parent;
+  }
+  return reviews;
+}
+
+function hasCompletedLevelReviews(node) {
+  return collectCompletedLevelReviews(node).length > 0;
+}
+
+function createLevelReview(parent, activeNode) {
+  return {
+    parentId: parent.id,
+    activeNodeId: activeNode.id,
+  };
 }
 
 function render() {
   const activeNode = preorder[activeIndex] ?? null;
   currentNodeMetrics = measureAllNodes(preorder, activeNode);
-  const model = activeNode ? buildVisibleModel(activeNode) : buildEndModel();
+  const model = activeNode
+    ? levelReview
+      ? buildLevelReviewModel(activeNode, levelReview)
+      : buildVisibleModel(activeNode)
+    : buildEndModel();
   const viewport = computeViewport(model);
 
   syncLinks(model.links);
@@ -1913,6 +1991,91 @@ function buildVisibleModel(activeNode) {
   return { nodes, links, baseline };
 }
 
+function buildLevelReviewModel(activeNode, review) {
+  const parent = idToNode.get(review.parentId);
+  if (!parent || !parent.children.some((child) => isAncestorOrSelf(child, activeNode))) {
+    levelReview = null;
+    return buildVisibleModel(activeNode);
+  }
+
+  const model = buildVisibleModel(activeNode);
+  const visibleIds = new Set(model.nodes.map((node) => node.id));
+  parent.children.forEach((child) => visibleIds.add(child.id));
+
+  const positions = new Map(model.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+  const parentPosition = positions.get(parent.id);
+  if (!parentPosition) {
+    levelReview = null;
+    return model;
+  }
+
+  const parentMetric = getNodeMetric(parent);
+  const childMeasures = parent.children.map((child) => ({
+    child,
+    height: measureSubtree(child, visibleIds).height,
+  }));
+  const totalHeight =
+    childMeasures.reduce((total, item) => total + item.height, 0) +
+    Math.max(0, childMeasures.length - 1) * layout.rowGap;
+  let childCursor = parentPosition.y - totalHeight / 2;
+
+  childMeasures.forEach(({ child, height }) => {
+    const childMetric = getNodeMetric(child);
+    placeSubtree(child, visibleIds, positions, {
+      x: parentPosition.x + parentMetric.width / 2 + layout.pathGap + childMetric.width / 2,
+      y: childCursor + height / 2,
+    });
+    childCursor += height + layout.rowGap;
+  });
+
+  const pathIds = new Set(pathToRoot(activeNode).map((node) => node.id));
+  const nodes = [];
+  const links = [];
+
+  visibleIds.forEach((id) => {
+    const node = idToNode.get(id);
+    const position = positions.get(id);
+    if (!node || !position) {
+      return;
+    }
+
+    const isPath = pathIds.has(id);
+    const isReviewSibling = node.parent === parent;
+    nodes.push({
+      id,
+      label: node.label,
+      x: position.x,
+      y: position.y,
+      width: getNodeMetric(node).width,
+      height: getNodeMetric(node).height,
+      depth: node.depth,
+      preorderIndex: node.preorderIndex,
+      isPath,
+      isActive: node.id === activeNode.id,
+      isComplete: !isPath || isReviewSibling,
+    });
+
+    if (node.parent && positions.has(node.parent.id)) {
+      const linkIsReviewSibling = node.parent === parent;
+      links.push({
+        id: `${node.parent.id}->${node.id}`,
+        from: positions.get(node.parent.id),
+        fromWidth: getNodeMetric(node.parent).width,
+        to: position,
+        toWidth: getNodeMetric(node).width,
+        isPathLink: pathIds.has(node.parent.id) && pathIds.has(node.id) && !linkIsReviewSibling,
+      });
+    }
+  });
+
+  return {
+    nodes,
+    links,
+    baseline: model.baseline,
+    reviewNodeIds: parent.children.map((child) => child.id),
+  };
+}
+
 function pathToRoot(node) {
   const path = [];
   let current = node;
@@ -1923,6 +2086,17 @@ function pathToRoot(node) {
   }
 
   return path;
+}
+
+function isAncestorOrSelf(ancestor, node) {
+  let current = node;
+  while (current) {
+    if (current === ancestor) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
 }
 
 function measureSubtree(node, visibleIds) {
@@ -1990,6 +2164,10 @@ function computeViewport(model, targetIndex = null) {
     return computeEndViewport(model, logicalViewport, targetIndex);
   }
 
+  if (model.reviewNodeIds) {
+    return computeLevelReviewViewport(model, logicalViewport);
+  }
+
   const pathNodes = model.nodes.filter((node) => node.isPath);
   const pathMinX = Math.min(...pathNodes.map((node) => node.x - node.width / 2));
   const pathMaxX = Math.max(...pathNodes.map((node) => node.x + node.width / 2));
@@ -2008,6 +2186,29 @@ function computeViewport(model, targetIndex = null) {
   return {
     x: viewportX,
     y: viewportY,
+    width: logicalViewport.width,
+    height: logicalViewport.height,
+  };
+}
+
+function computeLevelReviewViewport(model, logicalViewport) {
+  const reviewNodes = model.nodes.filter((node) => model.reviewNodeIds.includes(node.id));
+  if (reviewNodes.length === 0) {
+    return {
+      x: 0,
+      y: model.baseline - logicalViewport.height / 2,
+      width: logicalViewport.width,
+      height: logicalViewport.height,
+    };
+  }
+
+  const bounds = computeModelBounds(reviewNodes);
+  const reviewCenterX = (bounds.minX + bounds.maxX) / 2;
+  const reviewCenterY = (bounds.minY + bounds.maxY) / 2;
+
+  return {
+    x: reviewCenterX - logicalViewport.width / 2,
+    y: reviewCenterY - logicalViewport.height / 2,
     width: logicalViewport.width,
     height: logicalViewport.height,
   };
@@ -2486,7 +2687,7 @@ function updateControls() {
   const endIndex = preorder.length;
   const isEnd = activeIndex === endIndex;
   const sliderProgress = endIndex === 0 ? 0 : (activeIndex / endIndex) * 100;
-  const label = getNextStepLabel(nextNode, isEnd);
+  const label = getNextStepLabel(nextNode, isEnd, activeNode);
 
   counter.textContent = `${activeIndex + 1} / ${endIndex + 1}`;
   nodeSlider.value = String(activeIndex);
@@ -2501,7 +2702,15 @@ function updateControls() {
   nextNodeTitle.textContent = label.title;
 }
 
-function getNextStepLabel(nextNode, isEnd) {
+function getNextStepLabel(nextNode, isEnd, activeNode) {
+  if (!levelReview && hasCompletedLevelReviews(activeNode)) {
+    return {
+      hasSubtitle: true,
+      subtitle: "下一步",
+      title: "当前层级回顾",
+    };
+  }
+
   if (isEnd) {
     return {
       hasSubtitle: true,
