@@ -9,7 +9,8 @@
   --node-image-thumb-width: 161px;
   --node-image-thumb-height: 84px;
   --node-image-expanded-width: 437px;
-  --node-image-expanded-height: 600px;
+  --node-image-expanded-height: 480px;
+  --node-image-max-ratio: 0.45;
   --active-node-scale: 1.5;
   color: #172033;
   background: #fcfcf8;
@@ -746,11 +747,9 @@ h1 {
   order: 3;
   appearance: none;
   display: block;
-  width: fit-content;
+  width: 100%;
+  max-width: min(100%, var(--node-image-width));
   height: auto;
-  min-width: 42px;
-  min-height: 0;
-  max-width: var(--node-image-width);
   max-height: var(--node-image-max-height);
   margin-top: 4px;
   padding: 0;
@@ -759,6 +758,7 @@ h1 {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.7);
   cursor: zoom-in;
+  box-sizing: border-box;
   transition:
     max-width 920ms cubic-bezier(0.22, 1, 0.36, 1),
     max-height 920ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -783,7 +783,7 @@ h1 {
 }
 
 .node-content.image-expanded .node-image {
-  --node-image-width: min(70vw, var(--node-image-expanded-width));
+  --node-image-width: min(100%, var(--node-image-expanded-width));
   --node-image-max-height: var(--node-image-expanded-height);
   margin-top: 8px;
 }
@@ -797,15 +797,19 @@ h1 {
 
 .node-image img {
   display: block;
-  width: var(--node-image-width);
-  height: auto;
+  width: 100%;
   max-width: var(--node-image-width);
+  height: auto;
   max-height: var(--node-image-max-height);
   object-fit: contain;
   transform: scale(1);
   transition:
     transform 920ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 480ms ease;
+}
+
+.mind-node.active .node-image img {
+  max-height: min(var(--node-image-max-height), 260px);
 }
 
 .node-content:not(.image-expanded) .node-image img {
@@ -1152,6 +1156,7 @@ let renderedNodes = new Map();
 let renderedLinks = new Map();
 let cameraTargetIndex = null;
 let currentNodeMetrics = new Map();
+let imageConstraints = null;
 let cameraZoom = Number(zoomSlider.value) / 100;
 let activeScale = Number(activeScaleSlider.value) / 100;
 let wheelDeltaBuffer = 0;
@@ -1491,9 +1496,11 @@ function measureAllNodes(nodes, activeNode) {
   document.body.appendChild(measurer);
 
   const metrics = new Map();
+  const imageConstraints = computeImageConstraints(nodes);
+
   nodes.forEach((node) => {
     const content = createNodeContent();
-    updateNodeContent(content, node, node.id === activeNode?.id);
+    updateNodeContent(content, node, node.id === activeNode?.id, imageConstraints);
     measurer.appendChild(content.root);
 
     const rect = content.root.getBoundingClientRect();
@@ -1507,6 +1514,54 @@ function measureAllNodes(nodes, activeNode) {
 
   measurer.remove();
   return metrics;
+}
+
+function computeImageConstraints(nodes) {
+  const imageNodes = nodes.filter((node) => node.image);
+  if (imageNodes.length === 0) {
+    return null;
+  }
+
+  // Measure all nodes to find reasonable bounds
+  const measurer = document.createElement("div");
+  measurer.className = "node-measurer";
+  document.body.appendChild(measurer);
+
+  const allWidths = [];
+  const allHeights = [];
+  
+  nodes.forEach((node) => {
+    const content = createNodeContent();
+    // Measure without image first for baseline
+    const tempImage = node.image;
+    node.image = "";
+    updateNodeContent(content, node, false, null);
+    measurer.appendChild(content.root);
+    const rect = measurer.getBoundingClientRect();
+    allWidths.push(rect.width);
+    allHeights.push(rect.height);
+    measurer.remove();
+    node.image = tempImage;
+  });
+
+  measurer.remove();
+
+  if (allWidths.length === 0) {
+    return null;
+  }
+
+  // Sort and find median
+  allWidths.sort((a, b) => a - b);
+  allHeights.sort((a, b) => a - b);
+  
+  const medianWidth = allWidths[Math.floor(allWidths.length / 2)] || 200;
+  const medianHeight = allHeights[Math.floor(allHeights.length / 2)] || 80;
+
+  // Limit image dimensions to reasonable multiple of typical node size
+  return {
+    maxWidth: Math.round(medianWidth * 1.8),
+    maxHeight: Math.round(medianHeight * 1.6),
+  };
 }
 
 function buildEndModel() {
@@ -1871,7 +1926,7 @@ function syncNodes(nodes, activeNode) {
       entry.group.style.width = `${node.width}px`;
       entry.group.style.height = `${node.height}px`;
       entry.group.style.transform = `translate(${node.x - node.width / 2}px, ${node.y - node.height / 2}px)`;
-      updateNodeContent(entry.content, idToNode.get(node.id), node.isActive);
+      updateNodeContent(entry.content, idToNode.get(node.id), node.isActive, imageConstraints);
     });
 }
 
@@ -1889,7 +1944,7 @@ function createNodeElement(node) {
   });
 
   const content = createNodeContent();
-  updateNodeContent(content, node, node.preorderIndex === activeIndex);
+  updateNodeContent(content, node, node.preorderIndex === activeIndex, null);
   group.append(content.root);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => group.classList.remove("entering"));
@@ -1939,7 +1994,7 @@ function createNodeContent() {
   return { root: content, subtitle, title, imageWrap, image };
 }
 
-function updateNodeContent(content, node, isActive) {
+function updateNodeContent(content, node, isActive, constraints) {
   const [title, ...subtitleLines] = node.label.split("\n");
   const subtitle = subtitleLines.join("\n");
 
@@ -1958,10 +2013,21 @@ function updateNodeContent(content, node, isActive) {
     content.imageWrap.dataset.previewSrc = node.image;
     content.imageWrap.dataset.previewAlt = content.image.alt;
     content.imageWrap.setAttribute("aria-label", `放大查看 ${content.image.alt}`);
+    
+    // Apply image constraints to limit node size
+    if (constraints) {
+      content.imageWrap.style.maxWidth = `${constraints.maxWidth}px`;
+      content.imageWrap.style.maxHeight = `${constraints.maxHeight}px`;
+    } else {
+      content.imageWrap.style.maxWidth = "";
+      content.imageWrap.style.maxHeight = "";
+    }
   } else {
     content.image.removeAttribute("src");
     content.image.alt = "";
     content.imageWrap.disabled = true;
+    content.imageWrap.style.maxWidth = "";
+    content.imageWrap.style.maxHeight = "";
     delete content.imageWrap.dataset.previewSrc;
     delete content.imageWrap.dataset.previewAlt;
     content.imageWrap.removeAttribute("aria-label");
