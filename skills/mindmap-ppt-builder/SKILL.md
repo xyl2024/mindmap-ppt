@@ -2,7 +2,6 @@
 name: mindmap-ppt-builder
 description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 ---
-
 # Mindmap PPT 生成器
 
 ## 目标
@@ -10,6 +9,7 @@ description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 生成或更新一个零依赖、可直接用浏览器打开的静态 Mindmap PPT。
 
 核心产物：
+
 - `project/source.js`：演示内容文件，必须包含合理的 `window.sourceMarkdown`。
 - `project/`：内容和本地资源目录，节点用 `@image` 引用本地图片。
 - `project/images/`：项目级图片素材目录。
@@ -21,6 +21,7 @@ description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 先问清楚，再动手。不要在会明显影响结果的地方替用户猜：演示目标、受众、风格、图片需求、输出目录、是否覆盖已有内容。
 
 信息不足时，优先问 1-3 个最关键问题：
+
 - **用途**：汇报、课程、产品演示、方案、文章总结，还是其他场景？
 - **受众**：谁会看？希望他们记住什么？
 - **范围**：生成完整项目、只更新内容、只处理图片，还是刷新播放器？
@@ -54,6 +55,7 @@ python scripts/scaffold.py <项目名> [输出目录]
 脚手架会在 `<输出目录>/<项目名>/` 下创建基础目录结构，包含 `project/`、`project/images/` 和 `project/codes/`；不传输出目录时默认在 `<当前目录>/<项目名>/` 下创建。
 
 可选参数：
+
 - `--title <标题>`：替换 HTML 标题。
 - `--overwrite-app`：刷新 `index.html`。
 - `--overwrite-source`：重置 `project/source.js`；已有内容项目不要用，除非用户要求。
@@ -75,6 +77,7 @@ window.sourceMarkdown = `
 ```
 
 写作规则：
+
 - 默认保留原文语言，除非用户要求翻译。
 - 根节点表达主题和演示承诺。
 - 默认 2-4 个主分支；材料逻辑更适合其他结构时，以材料为准。
