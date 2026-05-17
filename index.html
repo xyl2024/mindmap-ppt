@@ -526,6 +526,122 @@ h1 {
   top: 12px;
 }
 
+.global-view {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: 11;
+  width: min(300px, calc(100vw - 48px));
+  padding: 12px;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.global-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #183a4a;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.global-view-head strong {
+  color: #56636a;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.global-map {
+  display: block;
+  width: 100%;
+  height: 156px;
+  border: 1px solid rgba(24, 58, 74, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(247, 248, 245, 0.28)),
+    radial-gradient(circle at 18% 22%, rgba(224, 239, 233, 0.42), transparent 42%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.global-map-link {
+  fill: none;
+  stroke: rgba(42, 55, 68, 0.22);
+  stroke-linecap: round;
+  stroke-width: 1.4;
+}
+
+.global-map-link.played {
+  stroke: rgba(24, 58, 74, 0.52);
+  stroke-width: 1.8;
+}
+
+.global-map-node {
+  pointer-events: none;
+  stroke: rgba(24, 58, 74, 0.22);
+  stroke-width: 1;
+  transition:
+    fill 260ms ease,
+    opacity 260ms ease,
+    stroke 260ms ease;
+}
+
+.global-map-node.pending {
+  fill: rgba(231, 235, 229, 0.86);
+  opacity: 0.5;
+}
+
+.global-map-node.played {
+  fill: #eef7f3;
+  opacity: 0.88;
+}
+
+.global-map-node.active {
+  fill: #d8894f;
+  stroke: rgba(24, 58, 74, 0.42);
+  opacity: 1;
+}
+
+.global-map-viewport {
+  cursor: grab;
+  fill: rgba(216, 137, 79, 0.12);
+  pointer-events: all;
+  stroke: #d8894f;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.global-map-viewport.dragging,
+body.global-view-dragging .global-map-viewport {
+  cursor: grabbing;
+}
+
+.global-progress-track {
+  height: 5px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(224, 231, 224, 0.84);
+  box-shadow: inset 0 1px 2px rgba(24, 36, 42, 0.1);
+}
+
+.global-progress-bar {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #183a4a, #d8894f);
+  transition: width 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 #mindmap {
   display: block;
   position: relative;
@@ -550,6 +666,10 @@ h1 {
 .map-layer {
   transition: transform 640ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+}
+
+body.global-view-dragging .map-layer {
+  transition: none;
 }
 
 .node-layer,
@@ -1000,6 +1120,17 @@ h1 {
     padding: 16px 18px 17px;
   }
 
+  .global-view {
+    left: 14px;
+    bottom: 14px;
+    width: min(248px, calc(100vw - 28px));
+    padding: 10px;
+  }
+
+  .global-map {
+    height: 118px;
+  }
+
   .counter {
     min-width: 58px;
     font-size: 0.82rem;
@@ -1025,6 +1156,21 @@ h1 {
             <div class="node-layer" id="nodeLayer"></div>
           </div>
         </div>
+
+        <aside class="global-view glass-panel" aria-label="全局播放视图">
+          <div class="global-view-head">
+            <span>全局视图</span>
+            <strong id="globalProgressText">1 / 1</strong>
+          </div>
+          <svg class="global-map" id="globalMap" role="img" aria-label="整体播放进度与当前画布焦点">
+            <g id="globalMapLinks"></g>
+            <g id="globalMapNodes"></g>
+            <rect class="global-map-viewport" id="globalMapViewport" rx="6" ry="6"></rect>
+          </svg>
+          <div class="global-progress-track" aria-hidden="true">
+            <span class="global-progress-bar" id="globalProgressBar"></span>
+          </div>
+        </aside>
 
         <section class="floating-ui" aria-label="Presentation controls">
           <div class="title-panel glass-panel">
@@ -1125,6 +1271,12 @@ const activeScaleValue = document.querySelector("#activeScaleValue");
 const nextNodePreview = document.querySelector("#nextNodePreview");
 const nextNodeSubtitle = document.querySelector("#nextNodeSubtitle");
 const nextNodeTitle = document.querySelector("#nextNodeTitle");
+const globalMap = document.querySelector("#globalMap");
+const globalMapLinks = document.querySelector("#globalMapLinks");
+const globalMapNodes = document.querySelector("#globalMapNodes");
+const globalMapViewport = document.querySelector("#globalMapViewport");
+const globalProgressText = document.querySelector("#globalProgressText");
+const globalProgressBar = document.querySelector("#globalProgressBar");
 const imageViewer = createImageViewer();
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -1168,6 +1320,9 @@ let isSpaceHeld = false;
 let isPanning = false;
 let panStart = null;
 let cameraPan = { x: 0, y: 0 };
+let isGlobalViewDragging = false;
+let globalViewDrag = null;
+let globalViewState = null;
 
 assignTreeMetadata(root);
 preorder = collectPreorder(root);
@@ -1206,6 +1361,7 @@ mindmap.addEventListener("touchcancel", resetSwipeStart);
 
 // Canvas panning events
 mindmap.addEventListener("mousedown", handleMouseDown);
+globalMapViewport.addEventListener("mousedown", handleGlobalViewportMouseDown);
 window.addEventListener("mousemove", handleMouseMove);
 window.addEventListener("mouseup", handleMouseUp);
 
@@ -1361,6 +1517,11 @@ function handleMouseDown(event) {
 }
 
 function handleMouseMove(event) {
+  if (isGlobalViewDragging) {
+    handleGlobalViewportDrag(event);
+    return;
+  }
+
   if (!isPanning || !panStart) {
     return;
   }
@@ -1373,12 +1534,80 @@ function handleMouseMove(event) {
 }
 
 function handleMouseUp(event) {
+  if (isGlobalViewDragging) {
+    finishGlobalViewportDrag();
+    return;
+  }
+
   if (event.button !== 0 || !isPanning) {
     return;
   }
   isPanning = false;
   panStart = null;
   updateCursor();
+}
+
+function handleGlobalViewportMouseDown(event) {
+  if (event.button !== 0 || !globalViewState) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  isGlobalViewDragging = true;
+  globalMapViewport.classList.add("dragging");
+  document.body.classList.add("global-view-dragging");
+
+  const pointer = getGlobalMapPointer(event);
+  globalViewDrag = {
+    pointerOffsetX: pointer.x - globalViewState.viewportRect.x,
+    pointerOffsetY: pointer.y - globalViewState.viewportRect.y,
+  };
+}
+
+function handleGlobalViewportDrag(event) {
+  if (!globalViewState || !globalViewDrag) {
+    return;
+  }
+
+  event.preventDefault();
+  const pointer = getGlobalMapPointer(event);
+  const desiredMapRect = {
+    x: pointer.x - globalViewDrag.pointerOffsetX,
+    y: pointer.y - globalViewDrag.pointerOffsetY,
+    width: globalViewState.viewportRect.width,
+    height: globalViewState.viewportRect.height,
+  };
+  const clampedMapRect = {
+    ...desiredMapRect,
+    x: clamp(desiredMapRect.x, 0, Math.max(0, globalViewState.mapSize.width - desiredMapRect.width)),
+    y: clamp(desiredMapRect.y, 0, Math.max(0, globalViewState.mapSize.height - desiredMapRect.height)),
+  };
+  const desiredLogicalViewport = globalViewState.project.unprojectRect(clampedMapRect);
+
+  cameraTargetIndex = null;
+  cameraPan.x = globalViewState.baseViewport.x - desiredLogicalViewport.x;
+  cameraPan.y = globalViewState.baseViewport.y - desiredLogicalViewport.y;
+  render();
+}
+
+function finishGlobalViewportDrag() {
+  isGlobalViewDragging = false;
+  globalViewDrag = null;
+  globalMapViewport.classList.remove("dragging");
+  document.body.classList.remove("global-view-dragging");
+}
+
+function getGlobalMapPointer(event) {
+  const rect = globalMap.getBoundingClientRect();
+  const viewBox = globalMap.viewBox.baseVal;
+  const widthScale = viewBox.width / Math.max(1, rect.width);
+  const heightScale = viewBox.height / Math.max(1, rect.height);
+
+  return {
+    x: (event.clientX - rect.left) * widthScale + viewBox.x,
+    y: (event.clientY - rect.top) * heightScale + viewBox.y,
+  };
 }
 
 function parseMarkdownTree(markdown) {
@@ -1487,6 +1716,7 @@ function render() {
   syncLinks(model.links);
   syncNodes(model.nodes, activeNode);
   positionMapLayer(viewport, model);
+  syncGlobalView(buildEndModel(), viewport);
   updateControls();
 }
 
@@ -1839,6 +2069,167 @@ function computeModelBounds(nodes) {
       maxY: -Infinity,
     },
   );
+}
+
+function syncGlobalView(fullModel, viewport) {
+  const focusViewport = {
+    x: viewport.x - cameraPan.x,
+    y: viewport.y - cameraPan.y,
+    width: viewport.width,
+    height: viewport.height,
+  };
+  const mapSize = getGlobalMapSize();
+  const mapPadding = 14;
+  const bounds = computeGlobalViewBounds(fullModel.nodes, focusViewport);
+  const project = createGlobalProjector(bounds, mapSize, mapPadding);
+  const activeNode = preorder[activeIndex] ?? null;
+  const endIndex = preorder.length;
+  const progress = endIndex === 0 ? 0 : (activeIndex / endIndex) * 100;
+
+  globalMap.setAttribute("viewBox", `0 0 ${mapSize.width} ${mapSize.height}`);
+  globalProgressText.textContent = `${activeIndex + 1} / ${endIndex + 1}`;
+  globalProgressBar.style.width = `${progress}%`;
+
+  const linkFragment = document.createDocumentFragment();
+  fullModel.links.forEach((link) => {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.classList.add("global-map-link");
+    path.classList.toggle("played", isGlobalLinkPlayed(link));
+    path.setAttribute("d", globalLinkPath(link, project));
+    linkFragment.appendChild(path);
+  });
+  globalMapLinks.replaceChildren(linkFragment);
+
+  const nodeFragment = document.createDocumentFragment();
+  fullModel.nodes
+    .slice()
+    .sort((a, b) => a.preorderIndex - b.preorderIndex)
+    .forEach((node) => {
+      const point = project.point(node.x, node.y);
+      const radius = node.id === activeNode?.id ? 4.5 : 3.2;
+      const circle = document.createElementNS(SVG_NS, "circle");
+      circle.classList.add("global-map-node", getGlobalNodeState(node, activeNode));
+      circle.setAttribute("cx", formatNumber(point.x));
+      circle.setAttribute("cy", formatNumber(point.y));
+      circle.setAttribute("r", formatNumber(radius));
+      nodeFragment.appendChild(circle);
+    });
+  globalMapNodes.replaceChildren(nodeFragment);
+
+  const rect = project.rect(focusViewport);
+  globalMapViewport.setAttribute("x", formatNumber(rect.x));
+  globalMapViewport.setAttribute("y", formatNumber(rect.y));
+  globalMapViewport.setAttribute("width", formatNumber(Math.max(4, rect.width)));
+  globalMapViewport.setAttribute("height", formatNumber(Math.max(4, rect.height)));
+
+  globalViewState = {
+    baseViewport: viewport,
+    focusViewport,
+    mapSize,
+    project,
+    viewportRect: {
+      x: rect.x,
+      y: rect.y,
+      width: Math.max(4, rect.width),
+      height: Math.max(4, rect.height),
+    },
+  };
+}
+
+function getGlobalMapSize() {
+  const rect = globalMap.getBoundingClientRect();
+  return {
+    width: Math.max(1, Math.round(rect.width || 300)),
+    height: Math.max(1, Math.round(rect.height || 156)),
+  };
+}
+
+function computeGlobalViewBounds(nodes, viewport) {
+  const nodeBounds = nodes.length > 0 ? computeModelBounds(nodes) : {
+    minX: 0,
+    maxX: viewport.width,
+    minY: 0,
+    maxY: viewport.height,
+  };
+
+  return {
+    minX: Math.min(nodeBounds.minX, viewport.x),
+    maxX: Math.max(nodeBounds.maxX, viewport.x + viewport.width),
+    minY: Math.min(nodeBounds.minY, viewport.y),
+    maxY: Math.max(nodeBounds.maxY, viewport.y + viewport.height),
+  };
+}
+
+function createGlobalProjector(bounds, mapSize, padding) {
+  const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
+  const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
+  const drawableWidth = Math.max(1, mapSize.width - padding * 2);
+  const drawableHeight = Math.max(1, mapSize.height - padding * 2);
+  const scale = Math.min(drawableWidth / boundsWidth, drawableHeight / boundsHeight);
+  const offsetX = padding + (drawableWidth - boundsWidth * scale) / 2;
+  const offsetY = padding + (drawableHeight - boundsHeight * scale) / 2;
+
+  function point(x, y) {
+    return {
+      x: offsetX + (x - bounds.minX) * scale,
+      y: offsetY + (y - bounds.minY) * scale,
+    };
+  }
+
+  function rect(box) {
+    const origin = point(box.x, box.y);
+    return {
+      x: origin.x,
+      y: origin.y,
+      width: box.width * scale,
+      height: box.height * scale,
+    };
+  }
+
+  function unprojectPoint(x, y) {
+    return {
+      x: (x - offsetX) / scale + bounds.minX,
+      y: (y - offsetY) / scale + bounds.minY,
+    };
+  }
+
+  function unprojectRect(box) {
+    const origin = unprojectPoint(box.x, box.y);
+    return {
+      x: origin.x,
+      y: origin.y,
+      width: box.width / scale,
+      height: box.height / scale,
+    };
+  }
+
+  return { point, rect, unprojectRect };
+}
+
+function globalLinkPath(link, project) {
+  const start = project.point(link.from.x + link.fromWidth / 2, link.from.y);
+  const end = project.point(link.to.x - link.toWidth / 2, link.to.y);
+  const midX = start.x + Math.max(8, (end.x - start.x) * 0.5);
+
+  return `M ${formatNumber(start.x)} ${formatNumber(start.y)} C ${formatNumber(midX)} ${formatNumber(start.y)}, ${formatNumber(midX)} ${formatNumber(end.y)}, ${formatNumber(end.x)} ${formatNumber(end.y)}`;
+}
+
+function isGlobalLinkPlayed(link) {
+  const [fromId, toId] = link.id.split("->");
+  const fromNode = idToNode.get(fromId);
+  const toNode = idToNode.get(toId);
+  return Boolean(fromNode && toNode && fromNode.preorderIndex <= activeIndex && toNode.preorderIndex <= activeIndex);
+}
+
+function getGlobalNodeState(node, activeNode) {
+  if (node.id === activeNode?.id) {
+    return "active";
+  }
+  return node.preorderIndex <= activeIndex ? "played" : "pending";
+}
+
+function formatNumber(value) {
+  return Number.isFinite(value) ? value.toFixed(2) : "0";
 }
 
 function keepNodeInCenterBand(viewportStart, viewportSize, nodeCenter, centerBandRatio) {
