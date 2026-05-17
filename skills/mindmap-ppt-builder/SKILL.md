@@ -1,142 +1,94 @@
 ---
 name: mindmap-ppt-builder
-description: 根据提供的资料生成思维导图式的交互式演讲稿（mindmap-ppt），以静态网页提供产物。
+description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 ---
 
 # Mindmap PPT 生成器
 
 ## 目标
 
-生成一个可以直接双击打开的静态思维导图 PPT。完整产物包含：
+生成或更新一个零依赖、可直接用浏览器打开的静态 Mindmap PPT。
 
-- `index.html`：单文件，包含全部 CSS 和 JS，直接用浏览器打开即可。
-- `project/source.js`：用 `window.sourceMarkdown` 保存的 Markdown 导图内容。
-- `project/`：由 `@image` 引用的本地图片资源。
+核心产物：
+- `project/source.js`：演示内容文件，必须包含合理的 `window.sourceMarkdown`。
+- `project/`：可选图片资源目录，节点用 `@image` 引用本地图片。
+- `index.html`：核心 Mindmap PPT 播放器代码文件。
 
-用户可以双击 `index.html` 预览。后续只修改内容时，保留 `index.html`，只更新 `project/source.js` 和必要的 `project/` 资源。
+## 核心原则
 
-只有在需要确认精确语法或图片路径规则时，才读取 `references/project-format.md`。
+先问清楚，再动手。不要在会明显影响结果的地方替用户猜：演示目标、受众、风格、图片需求、输出目录、是否覆盖已有内容。
 
-## 内置静态模板
+信息不足时，优先问 1-3 个最关键问题：
+- **用途**：汇报、课程、产品演示、方案、文章总结，还是其他场景？
+- **受众**：谁会看？希望他们记住什么？
+- **范围**：生成完整项目、只更新内容、只处理图片，还是刷新播放器？
+- **风格**：正式、教学、说服、简洁、视觉化、探索式？
+- **图片**：使用用户图片、生成新图、代码转图，还是不配图？
+- **输出**：当前目录，还是用户指定目录？
 
-本 skill 已在 `assets/static-template/` 内置可复制的播放器模板。
+如果用户已经给足上下文，就直接执行，不要为了流程而追问。
 
-推荐在 skill 目录中运行脚手架命令：
+## 简化工作流
+
+1. 只澄清会阻碍产出质量的问题。
+2. 判断是新建还是更新：
+   - 新建：需要用脚手架创建项目。
+   - 更新：只修改 `project/source.js` 的演示内容以及必要图片资源。
+3. 先读材料并确定叙事路径，再编辑文件。
+4. 把核心精力放在写出合理的 `window.sourceMarkdown`。
+5. 只在图片能增强理解时添加 `@image`，并准备对应本地图片文件。
+6. 交付前检查 `source.js` 可加载、缩进合理、本地图片路径存在。
+
+## 新建或刷新模板
+
+优先在 skill 目录运行脚手架：
 
 ```bash
 python scripts/scaffold.py <输出目录>
 ```
 
 可选参数：
+- `--title <标题>`：替换 HTML 标题。
+- `--overwrite-app`：刷新 `index.html`。
+- `--overwrite-source`：重置 `project/source.js`；已有内容项目不要用，除非用户要求。
 
-- `--title <标题>`：设置生成的 `index.html` 的 `<title>` 标签，默认文本为 `Mindmap PPT Demo`。
-- `--overwrite-app`：用内置模板刷新 `index.html`。
-- `--overwrite-source`：用占位内容替换 `project/source.js`；更新已有 mindmap-ppt 时不要使用，除非用户要求重置。
-
-如果不能运行脚本，就手动复制：
-
+不能运行脚本时手动复制：
 - `assets/static-template/index.html` -> `<输出目录>/index.html`
-- `assets/static-template/project/source.js` -> `<输出目录>/project/source.js`，仅新建 mindmap-ppt 时复制
+- `assets/static-template/project/source.js` -> `<输出目录>/project/source.js`，仅新建或明确重置时复制。
 
-## 工作区规则
+## 写好 `window.sourceMarkdown`
 
-- 只在当前目录或用户明确指定的输出目录内工作。
-- 新建 mindmap-ppt ：先从 `assets/static-template/` 创建或刷新播放器文件，再写入 `project/source.js` 和图片资源。
-- 更新已有 mindmap-ppt ：如果 `index.html` 已存在，除非用户要求，否则不要改这个文件；只修改 `project/source.js` 和 `project/` 资源。
-- 不要删除已有 `project/` 资源，除非用户明确要求清理。
-
-## 工作流程
-
-1. 判断任务类型：
-   - 新建 mindmap-ppt ：目录中没有 `index.html`，或用户要求生成完整 PPT 产物。
-   - 更新 mindmap-ppt ：播放器文件已存在，或用户要求修改已有内容。
-2. 获取原始材料：
-   - 优先使用对话中粘贴的文本。
-   - 如果用户提供本地文件路径，只读取该文件。
-   - 如果没有文本也没有可读取文件，先向用户索要材料。
-3. 新建 mindmap-ppt 时，用 `scripts/scaffold.py` 或手动复制 `assets/static-template/`，把静态播放器放入输出目录。
-4. 阅读材料并提炼主线：
-   - 默认跟随原文语言：中文输入 -> 中文输出；英文输入 -> 英文输出。
-   - 谨慎保留事实；发现明显矛盾时说明问题，不要悄悄改写。
-   - 材料很长时，优先保留原有章节结构。
-5. 构建清晰的 preorder 逻辑树：
-   - 根节点：材料标题或主题。
-   - 主分支：通常 2-4 个部分，但以材料逻辑为准。
-   - 子节点：原因、证据、例子、流程步骤、对比、风险或补充。
-   - 只有在能增强理解时才增加层级。
-6. 按以下格式写入 `project/source.js`：
+每个 Markdown 无序列表项是一个节点，缩进表示父子关系。
 
 ```js
 window.sourceMarkdown = `
-- 主标题
-  正文说明
-    - 分支
-      关键观点
+- 演示主题
+  给受众的核心信息
+  @image images/overview.png
+    - 第一部分
+      要讲清楚的关键点
+    - 第二部分
+      另一个关键点
 `;
 ```
 
-把用户文本写入 JavaScript 模板字符串前，必须转义反引号和 `${...}` 序列。
+写作规则：
+- 默认保留原文语言，除非用户要求翻译。
+- 根节点表达主题和演示承诺。
+- 默认 2-4 个主分支；材料逻辑更适合其他结构时，以材料为准。
+- 一个节点只表达一个清楚观点；拥挤就拆分，太碎就合并。
+- 优先使用两行标签：短标题 + 简洁说明。
+- 写入 JavaScript 模板字符串前，转义反引号和 `${...}`。
 
-7. 谨慎选择配图节点：
-   - 图片是可选的。
-   - 通常选择 3-8 个信息密度高的节点；短材料可以 0-2 个。
-   - 优先给框架、对比、流程、时间线、架构、清单、建议或风险模型节点配图。
-8. 在 `project/` 或其子目录下创建/生成本地插图：
-   - 生成式位图优先用 PNG。
-   - 简单图解优先用 SVG。
-   - 照片类素材可用 JPG。
-   - 如果无法生成图片，需要配图时可创建克制风格的 SVG 占位图。
-9. 图片元数据写在节点可见标签之后、子节点之前：
+只有在需要确认精确解析或路径规则时，才读取 `references/project-format.md`。
 
-```md
-  @image diagrams/process-overview.svg
-```
+## 合理获取图片资源
 
-10. 结束前检查：
-    - 完整的 mindmap-ppt 必须包含 `index.html` 和 `project/source.js`。
-    - `project/source.js` 必须给 `window.sourceMarkdown` 赋值，并且模板字符串已闭合。
-    - 每个 `@image` 都指向存在的本地资源；明确使用外部链接或 data URL 的情况除外。
-    - 不需要 `npm run`、本地服务器或构建步骤；直接用浏览器打开 `index.html` 预览。
+图片是可选项。只有图片能降低解释成本、增强记忆或承载复杂结构时才配图。读取 `references/images-role.md` 以获取配图规范。
 
-## 导图写作规则
+## 交付检查
 
-- 每个树节点对应一个无序列表 Markdown 条目。
-- 优先使用两行标签：第一行是主标题，后续行是正文/说明；标题会更大更粗并显示在最上方。
-- 主标题尽量简洁：中文约 18 字以内，英文约 6 个词以内；正文/说明中文约 30 字以内，英文约 8 个词以内。
-- 单行节点只显示为主标题；多行正文会在同一节点内按行换行显示，不要用 / 手写分隔。
-- 遵循原文顺序；播放器按 preorder 展示节点。
-- 不要在子节点重复根节点主题；子节点应该推进叙事。
-- 把相近含义归到同一父节点下，让背景、标准、风险、建议和结论各自成组。
-- 主节点承载判断，子节点承载证据、原因、例子或补充。
-- 每个父节点最多 5 个子节点；超过时增加分组节点。
-- 工具/产品只有在原文逐一分析时才拆开；如果只是顺带列举，应合并处理。
-- 一个节点表达一个完整小观点，不要只是句子碎片，也不要包含多个无关观点。
-- 父节点负责概括和导航，子节点负责展开细节。
-
-## Markdown 与图片示例
-
-```js
-window.sourceMarkdown = `
-- 产品发布
-  三分钟讲清楚新功能
-  @image overview.png
-    - 用户痛点
-      当前流程成本很高
-      @image image-asset-1/pain-points.jpg
-    - 解决方案
-      自动整理文稿和插图
-    - 演示效果
-      像 PPT 一样逐步展开
-      @image diagrams/demo-flow.svg
-`;
-```
-
-图片路径默认相对于 `project/`：
-
-- `@image overview.png` -> `./project/overview.png`
-- `@image image-asset-1/pain-points.jpg` -> `./project/image-asset-1/pain-points.jpg`
-- `@image diagrams/demo-flow.svg` -> `./project/diagrams/demo-flow.svg`
-
-## 图片资源
-
-- 如果当前存在生成图片的工具，且用户没有提供图片资源时，需要为当前主题的若干关键点生成合适的演示图片。
+- `project/source.js` 包含预期的 `window.sourceMarkdown` 赋值。
+- Markdown 缩进能表达预期树结构。
+- 每个本地 `@image` 都指向 `project/` 下存在的文件。
+- 不删除已有 `project/` 资源，除非用户明确要求清理。

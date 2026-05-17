@@ -1,10 +1,10 @@
 window.sourceMarkdown = `
 - Mindmap PPT
   把文稿讲成可播放导图
-  @image generated/product-overview.png
+  @image images/product-overview.png
     - 它能帮你什么
       让复杂内容顺着讲
-      @image generated/use-cases.png
+      @image images/use-cases.png
         - 演讲汇报
           一步步展开论点脉络
         - 课程笔记
@@ -15,7 +15,7 @@ window.sourceMarkdown = `
           从文章变成演示大纲
     - 最重要操作
       顺着播放再按需调整
-      @image generated/controls-navigation.png
+      @image images/controls-navigation.png
         - 顺序推进
           上下键或滚轮前进后退
         - 跳到重点
@@ -26,7 +26,7 @@ window.sourceMarkdown = `
             点击节点只移动视角
     - 让 Agent 制作
       从材料到可播放导图
-      @image generated/agent-workflow.png
+      @image images/agent-workflow.png
         - 准备输入
           材料目标风格说清楚
           - 提供材料
@@ -37,7 +37,7 @@ window.sourceMarkdown = `
           更新 source.js 和配图
     - 你会拿到什么
       一个静态网站项目包
-      @image generated/project-deliverable.png
+      @image images/project-deliverable.png
         - 项目资产
           内容和图片都在 project
           - 内容文件

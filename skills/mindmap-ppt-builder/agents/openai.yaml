@@ -1,4 +1,4 @@
 interface:
   display_name: "Mindmap PPT 生成器"
-  short_description: "生成可直接用浏览器打开的完整静态思维导图 PPT 文件夹"
-  default_prompt: "使用这个 skill，将用户提供的材料转换成完整的离线静态 Mindmap PPT 产物。"
+  short_description: "根据用户资料生成或更新静态 Mindmap PPT 项目"
+  default_prompt: "使用这个 skill，先澄清演示目标、受众、范围和图片需求，再把材料整理成可播放的 Mindmap PPT。"
