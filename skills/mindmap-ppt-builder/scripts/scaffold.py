@@ -3,19 +3,21 @@
 
 from __future__ import annotations
 
-import shutil
 import sys
 from pathlib import Path
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = SKILL_DIR / "assets" / "static-template"
-HELP_TEXT = """用法：python scripts/scaffold.py [输出目录] [--title <标题>] [--overwrite-app] [--overwrite-source]
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+HELP_TEXT = """用法：python scripts/scaffold.py <项目名> [输出目录] [--title <标题>] [--overwrite-app] [--overwrite-source]
 
 创建或刷新一个独立静态 Mindmap PPT 项目。
 
 参数：
-  输出目录              可选，默认为当前目录
+  项目名                必填，用作输出目录下的项目文件夹名称
+  输出目录              可选，默认为当前目录；最终生成路径为 <输出目录>/<项目名>/
   --title <标题>        可选，设置 index.html 的 <title> 标签；默认文本为 "Mindmap PPT Demo"
   --overwrite-app       覆盖 index.html 播放器文件
   --overwrite-source    覆盖 project/source.js 占位内容
@@ -32,6 +34,47 @@ def copy_file(src: Path, dest: Path, *, overwrite: bool, title: str | None = Non
         content = content.replace("Mindmap PPT Demo", title)
     dest.write_text(content, encoding="utf-8")
     return "已写入"
+
+
+def ensure_dir(path: Path) -> str:
+    existed = path.exists()
+    path.mkdir(parents=True, exist_ok=True)
+    return "已存在" if existed else "已创建"
+
+
+def print_tree(root: Path) -> None:
+    print("目录结构：")
+    print(f"{root.name}/")
+
+    def sort_key(path: Path) -> tuple[int, str]:
+        return (1 if path.is_file() else 0, path.name.lower())
+
+    def walk(directory: Path, prefix: str = "") -> None:
+        entries = sorted(directory.iterdir(), key=sort_key)
+        for index, entry in enumerate(entries):
+            is_last = index == len(entries) - 1
+            connector = "└── " if is_last else "├── "
+            suffix = "/" if entry.is_dir() else ""
+            print(f"{prefix}{connector}{entry.name}{suffix}")
+            if entry.is_dir():
+                extension = "    " if is_last else "│   "
+                walk(entry, prefix + extension)
+
+    walk(root)
+
+
+def validate_project_name(project_name: str) -> str:
+    project_path = Path(project_name)
+    if (
+        not project_name.strip()
+        or project_name in {".", ".."}
+        or project_path.is_absolute()
+        or project_path.name != project_name
+    ):
+        print("项目名必须是单层文件夹名称，不能是路径。")
+        print(HELP_TEXT)
+        raise SystemExit(2)
+    return project_name
 
 
 def parse_args(argv: list[str]) -> tuple[Path, str | None, bool, bool]:
@@ -67,12 +110,19 @@ def parse_args(argv: list[str]) -> tuple[Path, str | None, bool, bool]:
         else:
             positional.append(arg)
 
-    if len(positional) > 1:
-        print("只能提供一个输出目录。")
+    if not positional:
+        print("需要提供项目名。")
         print(HELP_TEXT)
         raise SystemExit(2)
 
-    target = Path(positional[0] if positional else ".").resolve()
+    if len(positional) > 2:
+        print("只能提供一个项目名和一个输出目录。")
+        print(HELP_TEXT)
+        raise SystemExit(2)
+
+    project_name = validate_project_name(positional[0])
+    output_dir = Path(positional[1] if len(positional) == 2 else ".").resolve()
+    target = output_dir / project_name
     return target, title, overwrite_app, overwrite_source
 
 
@@ -86,6 +136,15 @@ def main() -> int:
 
     status = copy_file(TEMPLATE_DIR / source_file, target / source_file, overwrite=overwrite_source)
     print(f"{status}: {target / source_file}")
+
+    for dirname in ("images", "codes"):
+        directory = target / dirname
+        status = ensure_dir(directory)
+        print(f"{status}: {directory}")
+
+    print()
+    print_tree(target)
+    print()
     print("直接用浏览器打开 index.html 即可预览。")
     return 0
 
