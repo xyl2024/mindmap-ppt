@@ -29,6 +29,7 @@ python scripts/scaffold.py <输出目录>
 
 可选参数：
 
+- `--title <标题>`：设置生成的 `index.html` 的 `<title>` 标签，默认文本为 `Mindmap PPT Demo`。
 - `--overwrite-app`：用内置模板刷新 `index.html`。
 - `--overwrite-source`：用占位内容替换 `project/source.js`；更新已有 mindmap-ppt 时不要使用，除非用户要求重置。
 
