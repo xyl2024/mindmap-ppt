@@ -1,107 +1,109 @@
 # AGENTS.md
 
-## Project Overview
+## 项目概览
 
-This is a small static front-end demo for a PPT-like animated mind map.
+这是一个零依赖的静态前端项目，用来把树状内容播放成 PPT 式动画思维导图。
 
-- Project data lives in `project/source.js`, which exports the unordered-list Markdown tree consumed by `src/main.js`.
-- The tree is traversed in preorder.
-- Nodes are rendered as HTML elements so their boxes can grow to contain text.
-- Links are rendered as SVG curves behind the HTML nodes.
-- The UI is plain HTML/CSS/JS, with no build step or runtime dependencies.
+- 当前实现集中在 `index.html`：包含页面结构、样式和全部交互脚本。
+- 项目内容数据在 `project/source.js`，通过 `window.sourceMarkdown` 暴露给 `index.html`。
+- 导图按树的先序遍历播放，`activeIndex` 表示当前播放到的节点序号。
+- 节点使用 HTML 元素渲染，便于文本、图片和卡片尺寸自然撑开。
+- 连线使用 SVG 曲线渲染，位于 HTML 节点后方。
+- 不需要 Node.js、构建步骤、打包工具或运行时依赖。
 
-## Markdown Data Rules
+## 当前文件结构
 
-- Each tree node is one unordered-list Markdown item.
-- A list item may use an indented continuation line for a two-line label:
+- `index.html`：页面入口；内联 CSS 和 JS；负责解析数据、布局、动画、控件、全局视图、图片预览。
+- `project/source.js`：当前演示内容，定义 `window.sourceMarkdown`。
+- `project/`：项目内容和本地图片资产；`@image` 默认从这里解析。
+- `project/generated/`：当前示例使用的生成图片素材。
+- `README.md`：项目面向使用者的说明。
+- `skills/mindmap-ppt-builder/`：用于生成或改造 Mindmap PPT 项目的 Agent Skill 及其模板。
+
+## 运行与检查
+
+- 本地预览：直接在浏览器打开 `index.html`。
+- 内容更新：编辑 `project/source.js` 后刷新页面。
+- 如果浏览器缓存导致脚本或图片看起来未更新，使用硬刷新。
+- 没有自动化测试、构建命令或 lint 命令；不要为小改动引入工具链。
+- 部署时可作为纯静态站点发布到 GitHub Pages、Netlify、Vercel Static、Nginx、对象存储或 CDN。
+
+## Markdown 数据规则
+
+- 每个节点是一条无序列表 Markdown 项。
+- 缩进表示父子层级；保持同一层级缩进一致。
+- 列表项可用缩进续行形成两行标签：
 
 ```md
-- Markdown Mindmap
-  项目汇报思维导图演示
-    - 需求分析
-      用户目标与演示场景
+- Mindmap PPT
+  把文稿讲成可播放导图
+    - 它能帮你什么
+      让复杂内容顺着讲
 ```
 
-- For two-line labels, the first line is the subtitle and the second line is the main title.
-- The top-left deck heading uses the root node the same way:
-  - root first line -> eyebrow/subtitle
-  - root second line -> main title
-- Node boxes also use the same two-line convention:
-  - first line -> small subtitle
-  - second line -> normal-size title
-- Single-line labels render as a normal one-line node title.
-- Control readouts may collapse multiline labels into an inline preview such as `副标题 / 主标题`.
-- A node may optionally attach one illustration with an `@image` metadata continuation line. Use paths relative to `project/`:
+- 两行标签约定：第一行是小标题/副标题，第二行是主标题。
+- 根节点也使用同样约定生成左上角演示标题：
+  - 根节点第一行 -> eyebrow/subtitle；
+  - 根节点第二行 -> 主标题。
+- 普通节点也使用同样约定：
+  - 第一行 -> `.node-subtitle`；
+  - 第二行 -> `.node-title`。
+- 单行标签渲染为普通单行节点标题。
+- 控件或读数区域可将多行标签折叠为 `副标题 / 主标题` 这类内联预览。
+- 允许在节点续行里添加一条 `@image` 元数据，用来挂载插图：
 
 ```md
-- 展示设计
-  画布布局与动画策略
-  @image layout.svg
+- 最重要操作
+  顺着播放再按需调整
+  @image generated/controls-navigation.png
 ```
 
-- `@image` lines are metadata only:
-  - They do not appear in node text.
-  - A node may have at most one image.
-  - Supported image formats are whatever browser `<img>` supports; use PNG, JPG/JPEG, or SVG for project assets.
-  - Prefer short local paths such as `example.svg`, `example.png`, or `image-asset-1/a.jpg`; they resolve to `./project/...`.
-  - For example, `@image image-asset-1/a.jpg` resolves to `./project/image-asset-1/a.jpg`.
-  - Explicit relative paths such as `./project/image-asset-1/a.jpg`, absolute paths, data URLs, and HTTP(S) URLs remain supported when needed.
-  - If multiple `@image` lines are added to one node, the latest parsed value wins.
-- Illustrations render inside their node card:
-  - selected image nodes show the image expanded below the node text
-  - non-selected image nodes show a small thumbnail below the node text
-  - nodes without `@image` do not reserve image space
-- Image expansion follows the real selected preorder node only. Clicking a node to move the camera must not expand its image unless it also changes `activeIndex`.
+## 图片规则
 
-## Running And Checking
+- `@image` 只作为元数据，不显示为节点文本。
+- 一个节点最多保留一张图；如果出现多条 `@image`，后解析到的值覆盖前面的值。
+- 推荐使用项目内短路径，如 `example.png`、`example.svg`、`generated/a.jpg`。
+- 短路径会解析为 `./project/...`，例如 `@image generated/a.png` -> `./project/generated/a.png`。
+- 显式相对路径、绝对路径、`data:`、`http:`、`https:` 仍按原值使用。
+- 浏览器 `<img>` 支持的图片格式都可用；项目资产优先使用 PNG、JPG/JPEG 或 SVG。
+- 有图节点在卡片内展示图片：未选中时为缩略图，选中时展开。
+- 点击图片可打开大图预览层；点击预览层或按关闭逻辑退出预览。
+- 不要在每次渲染时重建图片 DOM；应复用稳定的 `img` 元素并切换类名，保证缩略图到展开图的 CSS 过渡可插值。
+- 图片使用 `object-fit: contain`，避免裁切。
 
-- Preview locally by opening `index.html` directly in a browser.
-- No Node.js server, build step, or runtime dependency is required.
+## 交互规则
 
-## Core Files
+- 左/右方向键、Page Up/Page Down、顶部进度控件和滚轮用于前进/后退节点。
+- 触摸设备支持纵向滑动切换上一/下一节点。
+- 节点进度滑条可跳转到指定先序索引。
+- 播放进度允许到达 `preorder.length`，表示全部节点展示完毕的结束态。
+- 缩放滑条控制整体画布缩放，范围约为 `70%` 到 `140%`，默认 `100%`。
+- 选中节点放大滑条控制 CSS 变量 `--active-node-scale`，当前范围约为 `1.00x` 到 `2.00x`。
+- 点击可见节点只移动相机视角，不改变 `activeIndex`，也不展开该节点图片，除非该节点本身就是当前选中节点。
+- 按住空格并拖动画布可临时平移视角。
+- 右侧/侧边全局视图显示全部节点、已播放状态、当前视口框和总体进度；拖动视口框可调整相机平移。
+- 控制面板支持收起/展开；更新相关逻辑时保持 ARIA 状态同步。
+- 所有会改变播放节点的入口必须经过 `setActiveIndex()`，确保按钮、键盘、滚轮、触摸、滑条、全局进度和计数器同步。
 
-- `index.html`: page shell and top controls.
-- `project/source.js`: project Markdown data. Replace this file to change the mind map content.
-- `project/`: project Markdown data and local assets referenced by `@image`.
-- `src/main.js`: reads project data from `window.sourceMarkdown`, parses Markdown, handles preorder navigation, layout model, HTML node sync, SVG link sync.
-- `src/styles.css`: page styling, node/link styling, slider styling, animations.
-- `p.md`: original product prompt/spec.
+## 相机与布局规则
 
-## Interaction Rules
+- 当前从根节点到选中节点的路径水平展开。
+- 已访问但不在当前路径上的分支显示在父节点上方，并保留树结构。
+- 未访问节点在普通播放态中完全隐藏，不占布局空间。
+- 结束态会展示完整树。
+- 水平选中路径应尽量视觉稳定，避免节点突然大幅跳动。
+- 相机在固定逻辑画布上平移；不要根据浏览器宽高自动缩放节点或文字。
+- 缩放滑条是唯一主动缩放整张画布的入口。
+- 可视区域以实际 `#mindmap` 元素尺寸为准，演示舞台应随浏览器窗口伸缩。
+- `layout.centerBaseline` 控制水平路径基线，当前在 `index.html` 的 `layout` 配置中。
+- 已完成分支允许超出视口并被裁剪；不要为了完整容纳它们而自动缩小画布。
+- 选中节点或点击目标节点应使用中央 40% 视口带规则：如果目标已在中央带内，不移动；否则只移动到刚好进入中央带。
+- 图片展开会改变节点高度；相机和连线计算必须基于节点完整盒模型。
+- SVG 连线应从节点边界连接到节点边界，不能只按文本中心估算。
 
-- Up/down arrow keys move to previous/next preorder node.
-- Top arrow buttons do the same.
-- The range slider jumps directly to a preorder index.
-- The zoom slider controls camera distance, scaling the whole canvas from about `70%` to `140%`; default is `100%`.
-- The second control row shows the current node label and next node label.
-- Clicking a visible node moves the camera toward that node's current-layout position without changing the selected node or expanded image. Move the camera as little as possible: if the clicked node is already inside the central 40% of the viewport, do not move; otherwise shift just enough to bring it into that central band.
-- Changing the selected node should use the same central 40% camera rule: move as little as possible to bring the selected node into that central band.
+## 动画规则
 
-Keep all navigation paths going through `setActiveIndex()` so buttons, keyboard, slider, graph, and counter stay synchronized.
-
-## Layout Rules
-
-- The current path from `root` to selected node is horizontal.
-- Already visited but non-path branches appear above their parent and preserve tree structure.
-- Unvisited nodes are completely hidden and occupy no layout space.
-- The horizontal selected path should stay visually stable.
-- Default node and text sizing is intentionally large, roughly 30% larger than the original compact demo.
-- The camera pans across a fixed logical canvas and must not auto-scale nodes or text because of browser aspect ratio. Node and font sizes stay in CSS pixels unless the user changes the zoom slider.
-- The zoom slider is the only intended way to scale the whole canvas.
-- The visible viewport uses the actual `#mindmap` element size. The presentation stage should stretch with the browser window.
-- `layout.centerBaseline = 520` controls the horizontal path's baseline in logical canvas coordinates.
-- Completed branches are allowed to exceed the viewport and be clipped. Do not scale the camera view to fit them, because that makes nodes and text smaller.
-- When long path labels push nodes toward the viewport edge, the camera should shift just enough to place the selected or clicked node inside the central 40% band.
-- Image nodes participate in normal layout. The node box must grow to contain the thumbnail or expanded image.
-- Expanded images may increase node height; camera logic should still use the central 40% band rule for the selected node.
-- SVG links should connect from node border to node border, using the full node box dimensions.
-- Node images should use `object-fit: contain` so oversized images shrink to the configured thumbnail/expanded bounds without cropping.
-- Image expand/collapse should be animated smoothly when selection changes. Preserve CSS transitions for the image container size and image transform.
-- Do not rebuild the node image DOM on every render; reuse stable `img` elements and toggle classes so browser transitions can interpolate thumbnail-to-expanded size changes.
-
-## Animation Rules
-
-- Node content is HTML and is wrapped as:
+- 节点内容结构应保持兼容：
 
 ```html
 <div class="mind-node">
@@ -112,40 +114,41 @@ Keep all navigation paths going through `setActiveIndex()` so buttons, keyboard,
 </div>
 ```
 
-- New nodes use a simple transition-based pop:
-  - entering state: `scale(0.58)`, `opacity: 0`
-  - active selected state: `scale(1.15)`, `opacity: 1`
-  - normal unselected state: `scale(1)`
-- Node movement, resizing, selection, and deselection should feel presentation-like and relatively slow:
-  - node box movement/size transitions are roughly `820ms`-`860ms`
-  - node content transform transitions are roughly `920ms`
-  - image thumbnail/expanded transitions are roughly `920ms`
-- Do not reintroduce keyframe-based transform fill for node pop. It previously prevented selected nodes from animating back down to normal size.
-- Selected nodes keep a stable orange glow via box-shadow; do not use a spreading ring effect unless explicitly requested.
-- Link reveal animation is still keyframe-based and should be preserved:
-  - `pathLength="1"` in JS
-  - `link-draw` in CSS
+- 新节点入场使用简单 transition 弹出：`scale(0.58)`、`opacity: 0` 到正常状态。
+- 选中节点通过 `--active-node-scale` 放大，默认约 `1.5`。
+- 普通未选中节点为 `scale(1)`。
+- 节点移动、尺寸、选中/取消选中和图片展开/收起应保持偏慢、演示感强的过渡。
+- 不要重新引入基于 keyframes 的节点 transform 填充动画；它会干扰选中节点缩回普通大小。
+- 选中节点使用稳定橙色 glow/box-shadow；除非明确要求，不要改成扩散环效果。
+- SVG 连线揭示动画仍使用 keyframes；JS 中的 `pathLength="1"` 和 CSS 中的 `link-draw` 逻辑应保留。
 
-## Important Edge Cases
+## 重要边界情况
 
-- Rapid navigation with the slider can expose delayed-removal races. If editing `syncNodes()` or `syncLinks()`, be careful with timeout-based removals:
-  - Clear pending removal timers when an item becomes visible again, or
-  - Check that the item is still not live inside the timeout before removing it.
-- For a one-node tree, slider progress must not divide by zero. Guard `preorder.length - 1` if making the demo data configurable.
+- 快速拖动滑条会暴露延迟删除竞态。修改节点或连线同步逻辑时，如果使用定时删除，必须在元素重新变为可见时清除删除定时器，或在定时器触发时再次确认元素仍不在 live 集合中。
+- 单节点树和空数据附近逻辑要避免 `preorder.length - 1`、进度百分比或滑条范围除以零。
+- `setActiveIndex()` 当前会把索引限制在 `0..preorder.length`，结束态是合法状态；不要误改为只能到最后一个节点。
+- 点击节点移动相机时，`cameraTargetIndex` 不等同于 `activeIndex`；图片展开必须只跟随真实选中节点。
+- 修改 Markdown 解析时，保留续行文本、`@image` 元数据和缩进层级的兼容性。
+- 更新全局视图时注意 `globalViewState` 与拖动状态，避免与主画布拖拽互相干扰。
 
-## Style Notes
+## 样式约定
 
-- Keep the visual style light, presentation-friendly, and restrained.
-- Existing palette:
-  - dark selected node: `#183a4a`
-  - orange accent: `#d8894f`
-  - completed node fill: `#eef7f3`
-  - path node fill: `#fffdf8`
-- Cards and buttons use small `8px` radii.
-- Avoid adding heavy decorative effects or large layout shifts.
+- 视觉风格保持轻量、演示友好、克制，不添加重装饰效果。
+- 现有主色尽量沿用：
+  - 深色选中节点：`#183a4a`；
+  - 橙色强调：`#d8894f`；
+  - 完成节点填充：`#eef7f3`；
+  - 路径节点填充：`#fffdf8`。
+- 卡片和按钮圆角以小半径为主，当前多处使用 `8px`。
+- 默认节点和文字较大，适合投屏演示；不要无故缩小。
+- 允许优化响应式布局，但不要让浏览器宽高变化导致节点文字自动变小。
 
-## Development Notes
+## 开发注意事项
 
-- Prefer editing with `apply_patch`.
-- Keep the app dependency-free unless there is a clear reason to add tooling.
-- Browser cache can retain old `src/main.js` because it is loaded as a module. If a normal refresh looks stale, use a hard refresh.
+- 优先用 `apply_patch` 修改文件。
+- 改动应聚焦当前需求，避免顺手重构无关逻辑。
+- 保持项目零依赖，除非用户明确要求或有非常充分理由。
+- 如果修改 `index.html` 中的样式、布局或脚本，注意它是单文件实现，相关逻辑可能在同一文件不同位置互相依赖。
+- 如果把内联 CSS/JS 拆分到独立文件，必须同步更新 `index.html`、`README.md` 和本文件。
+- 不要提交 Git commit 或创建分支，除非用户明确要求。
+
