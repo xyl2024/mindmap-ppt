@@ -49,6 +49,8 @@ description: 根据用户资料生成或更新静态 Mindmap PPT 项目。
 python scripts/scaffold.py <项目名> [输出目录]
 ```
 
+项目名不能使用中文字符，请使用英文、数字、连字符或下划线，避免生成路径兼容性问题。
+
 脚手架会在 `<输出目录>/<项目名>/` 下创建基础目录结构，包含 `project/`、`project/images/` 和 `project/codes/`；不传输出目录时默认在 `<当前目录>/<项目名>/` 下创建。
 
 可选参数：

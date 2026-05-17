@@ -16,7 +16,7 @@ HELP_TEXT = """用法：python scripts/scaffold.py <项目名> [输出目录] [-
 创建或刷新一个独立静态 Mindmap PPT 项目。
 
 参数：
-  项目名                必填，用作输出目录下的项目文件夹名称
+  项目名                必填，用作输出目录下的项目文件夹名称，不能包含中文字符
   输出目录              可选，默认为当前目录；最终生成路径为 <输出目录>/<项目名>/
   --title <标题>        可选，设置 index.html 的 <title> 标签；默认文本为 "Mindmap PPT Demo"
   --overwrite-app       覆盖 index.html 播放器文件
@@ -74,7 +74,26 @@ def validate_project_name(project_name: str) -> str:
         print("项目名必须是单层文件夹名称，不能是路径。")
         print(HELP_TEXT)
         raise SystemExit(2)
+    if has_chinese_character(project_name):
+        print("项目名不能包含中文字符，请使用英文、数字、连字符或下划线。")
+        print(HELP_TEXT)
+        raise SystemExit(2)
     return project_name
+
+
+def has_chinese_character(text: str) -> bool:
+    cjk_ranges = (
+        (0x3400, 0x4DBF),
+        (0x4E00, 0x9FFF),
+        (0xF900, 0xFAFF),
+        (0x20000, 0x2A6DF),
+        (0x2A700, 0x2B73F),
+        (0x2B740, 0x2B81F),
+        (0x2B820, 0x2CEAF),
+        (0x2CEB0, 0x2EBEF),
+        (0x30000, 0x323AF),
+    )
+    return any(start <= ord(char) <= end for char in text for start, end in cjk_ranges)
 
 
 def parse_args(argv: list[str]) -> tuple[Path, str | None, bool, bool]:
